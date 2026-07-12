@@ -1,0 +1,222 @@
+import { expect, test, type Page } from '@playwright/test'
+import {
+  fairwayAreasFixture,
+  fairwayLinesFixture,
+  ogcCollectionsFixture,
+  openMeteoFixture,
+  overpassFixture,
+} from './fixtures'
+
+/** 1×1 läpinäkyvä PNG karttatiiliksi */
+const TILE = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+  'base64',
+)
+
+async function mockNetwork(page: Page) {
+  await page.route(/overpass/, (route) =>
+    route.fulfill({ json: overpassFixture, contentType: 'application/json' }),
+  )
+  await page.route(/avoinapi\.vaylapilvi\.fi.*\/collections\?/, (route) =>
+    route.fulfill({ json: ogcCollectionsFixture }),
+  )
+  await page.route(/avoinapi\.vaylapilvi\.fi.*vaylat_uusi/, (route) =>
+    route.fulfill({ json: fairwayLinesFixture }),
+  )
+  await page.route(/avoinapi\.vaylapilvi\.fi.*vaylaalueet_uusi/, (route) =>
+    route.fulfill({ json: fairwayAreasFixture }),
+  )
+  await page.route(/api\.open-meteo\.com/, (route) => route.fulfill({ json: openMeteoFixture() }))
+  await page.route(/tile\.openstreetmap\.org/, (route) =>
+    route.fulfill({ body: TILE, contentType: 'image/png' }),
+  )
+}
+
+declare global {
+  interface Window {
+    __appStore: {
+      getState: () => any
+      setState: (s: any) => void
+    }
+  }
+}
+
+test.beforeEach(async ({ page }) => {
+  await mockNetwork(page)
+  await page.goto('/')
+})
+
+async function waitForWater(page: Page) {
+  await page.waitForFunction(
+    () => window.__appStore?.getState().waterState.status === 'ready',
+    undefined,
+    { timeout: 30_000 },
+  )
+}
+
+test('app loads, downloads data and lists curated spots', async ({ page }) => {
+  await expect(page.getByTestId('map')).toBeVisible()
+  await expect(page.getByTestId('spot-list')).toBeVisible()
+  await expect(page.getByTestId('spot-list').getByText('Kelvenne · Kirkkosalmi')).toBeVisible()
+  await waitForWater(page)
+  // Banneri poistuu kun vesi + väylät ovat valmiit
+  await expect(page.getByTestId('data-banner')).toHaveCount(0)
+})
+
+test('spot panel shows fetch rose, sunset badge and fairway distance', async ({ page }) => {
+  await waitForWater(page)
+  await page.getByTestId('spot-list').getByText('Kelvenne · Kirkkosalmi').click()
+  await expect(page.getByTestId('spot-panel')).toBeVisible()
+  // Laskenta valmistuu ja ruusu piirtyy
+  await expect(page.locator('.fetch-rose svg path').first()).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByText(/Auringonlasku:/)).toBeVisible()
+  await expect(page.getByText(/Etäisyys väylään/)).toBeVisible()
+})
+
+test('spot next to a fairway gets the nearFairway warning', async ({ page }) => {
+  await waitForWater(page)
+  // Pulkkilanharju on fixture-väylän vieressä
+  await page.getByTestId('spot-list').getByText('Pulkkilanharju', { exact: false }).click()
+  await expect(page.getByTestId('spot-panel')).toBeVisible()
+  await expect(page.locator('.badge', { hasText: 'Väylä lähellä' })).toBeVisible({
+    timeout: 20_000,
+  })
+})
+
+test('adding an own spot via map click persists across reload', async ({ page }) => {
+  await waitForWater(page)
+  await page.getByTestId('add-spot').click()
+  await page.getByTestId('map').click({ position: { x: 400, y: 300 } })
+  await expect(page.getByTestId('spot-form')).toBeVisible()
+  await page.getByTestId('spot-name').fill('Testipoukama')
+  await page.getByTestId('spot-save').click()
+  await expect(page.getByTestId('spot-panel')).toBeVisible()
+  await page.reload()
+  await expect(page.getByTestId('spot-list').getByText('Testipoukama')).toBeVisible()
+})
+
+test('route across the island warns, route around it does not', async ({ page }) => {
+  await waitForWater(page)
+  // Reitti suoraan fixture-saaren yli
+  await page.evaluate(() => {
+    const app = window.__appStore.getState()
+    app.addRoute({
+      id: 'e2e-route',
+      name: 'Testireitti',
+      waypoints: [
+        { lat: 61.6, lon: 25.45 },
+        { lat: 61.6, lon: 25.55 },
+      ],
+    })
+    app.setTab('route')
+  })
+  await expect(page.getByTestId('route-panel')).toBeVisible()
+  await expect(page.getByTestId('land-warning')).toBeVisible()
+  await expect(page.getByText('Etappi 1 leikkaa maata')).toBeVisible()
+  // Sama reitti saaren pohjoispuolelta — ei varoitusta
+  await page.evaluate(() => {
+    window.__appStore.getState().updateRoute('e2e-route', {
+      waypoints: [
+        { lat: 61.6, lon: 25.45 },
+        { lat: 61.65, lon: 25.5 },
+        { lat: 61.6, lon: 25.55 },
+      ],
+    })
+  })
+  await expect(page.getByTestId('land-warning')).toHaveCount(0)
+  const metrics = page.getByTestId('route-metrics')
+  await expect(metrics).toContainText('mpk')
+  await expect(metrics).toContainText('min')
+  await expect(metrics).toContainText('l ·')
+})
+
+test('route metrics: ~10 nm at 20 kn ≈ 30 min and ~11 L', async ({ page }) => {
+  await waitForWater(page)
+  await page.evaluate(() => {
+    const app = window.__appStore.getState()
+    // 10 mpk pohjoiseen avovedessä
+    app.addRoute({
+      id: 'e2e-metrics',
+      name: 'Mittari',
+      waypoints: [
+        { lat: 61.1, lon: 25.2 },
+        { lat: 61.1 + 18.52 / 111.32, lon: 25.2 },
+      ],
+    })
+    app.setTab('route')
+  })
+  const metrics = page.getByTestId('route-metrics')
+  await expect(metrics).toContainText('10.0 mpk')
+  await expect(metrics).toContainText('30 min')
+  await expect(metrics).toContainText('11 l')
+})
+
+test('5-day shelter forecast: west wind → east-of-island sheltered, open west shore exposed', async ({
+  page,
+}) => {
+  await waitForWater(page)
+  // Kaksi testipistettä fixture-saaren ympärillä
+  await page.evaluate(() => {
+    const app = window.__appStore.getState()
+    app.addSpot({ id: 'e2e-east', name: 'Saaren itäpuoli', lat: 61.6, lon: 25.5305, isIsland: true })
+    app.addSpot({ id: 'e2e-west', name: 'Avoin länsiranta', lat: 61.6, lon: 25.2, isIsland: false })
+  })
+  // Odota laskenta molemmille
+  await page.waitForFunction(() => {
+    const st = window.__appStore.getState()
+    const keys = Object.keys(st.computed)
+    return keys.some((k) => k.startsWith('e2e-east:')) && keys.some((k) => k.startsWith('e2e-west:'))
+  }, undefined, { timeout: 20_000 })
+
+  // Itäpuoli: länsituulelta suojassa
+  await page.evaluate(() => {
+    const app = window.__appStore.getState()
+    app.selectSpot('e2e-east')
+    app.setTab('forecast')
+  })
+  await expect(page.getByTestId('day-badges')).toBeVisible({ timeout: 15_000 })
+  const eastBadges = page.locator('.day-badge')
+  await expect(eastBadges).toHaveCount(5)
+  for (const badge of await eastBadges.all()) {
+    await expect(badge).toHaveAttribute('data-class', 'suojassa')
+  }
+
+  // Avoin länsiranta: altis
+  await page.evaluate(() => {
+    window.__appStore.getState().selectSpot('e2e-west')
+  })
+  await expect(page.getByTestId('day-badges')).toBeVisible({ timeout: 15_000 })
+  for (const badge of await page.locator('.day-badge').all()) {
+    await expect(badge).toHaveAttribute('data-class', 'altis')
+  }
+})
+
+test('export and import round-trip preserves own spots', async ({ page }) => {
+  await waitForWater(page)
+  await page.evaluate(() => {
+    window.__appStore
+      .getState()
+      .addSpot({ id: 'e2e-exp', name: 'Vientipaikka', lat: 61.5, lon: 25.3, isIsland: true })
+  })
+  const blob = await page.evaluate(() => {
+    const st = window.__appStore.getState()
+    return JSON.stringify({
+      app: 'paijanne-luonnonsatamat',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      userSpots: st.userSpots,
+      routes: st.routes,
+      settings: st.settings,
+    })
+  })
+  // Tyhjennä ja tuo takaisin
+  await page.evaluate(() => {
+    window.__appStore.setState({ userSpots: [], routes: [] })
+  })
+  await expect(page.getByTestId('spot-list').getByText('Vientipaikka')).toHaveCount(0)
+  await page.evaluate((text) => {
+    const json = JSON.parse(text)
+    window.__appStore.getState().importUserData(json)
+  }, blob)
+  await expect(page.getByTestId('spot-list').getByText('Vientipaikka')).toBeVisible()
+})
