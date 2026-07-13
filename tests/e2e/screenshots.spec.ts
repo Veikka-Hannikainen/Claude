@@ -31,24 +31,25 @@ async function setup(page: Page) {
     r.fulfill({ json: fairwayAreasFixture }),
   )
   await page.route(/api\.open-meteo\.com/, (r) => r.fulfill({ json: openMeteoFixture() }))
-  await page.route(/tile\.openstreetmap\.org/, (r) =>
+  await page.route(/tile\.openstreetmap\.org|cartocdn\.com/, (r) =>
     r.fulfill({ body: TILE, contentType: 'image/png' }),
   )
   await page.goto('/')
   await page.waitForFunction(() => (window as any).__appStore?.getState().waterState.status === 'ready')
 }
 
-test('screenshots', async ({ page }) => {
+test('screenshots', async ({ page }, testInfo) => {
+  const p = testInfo.project.name
   await setup(page)
-  await page.screenshot({ path: `${DIR}/1-yleiskuva.png` })
+  await page.screenshot({ path: `${DIR}/${p}-1-lista.png` })
 
   await page.getByTestId('spot-list').getByText('Kelvenne · Kirkkosalmi').click()
-  await page.locator('.fetch-rose svg path').first().waitFor({ timeout: 20_000 })
-  await page.screenshot({ path: `${DIR}/2-spotti.png` })
+  await page.getByTestId('day-badges').waitFor({ timeout: 20_000 })
+  await page.screenshot({ path: `${DIR}/${p}-2-paikkakortti.png` })
 
-  await page.evaluate(() => (window as any).__appStore.getState().setTab('forecast'))
-  await page.getByTestId('day-badges').waitFor({ timeout: 15_000 })
-  await page.screenshot({ path: `${DIR}/3-suojaennuste.png` })
+  await page.getByTestId('analysis').locator('summary').click()
+  await page.locator('.fetch-rose svg path').first().waitFor({ timeout: 20_000 })
+  await page.screenshot({ path: `${DIR}/${p}-3-analyysi.png` })
 
   await page.evaluate(() => {
     const app = (window as any).__appStore.getState()
@@ -61,8 +62,9 @@ test('screenshots', async ({ page }) => {
         { lat: 61.6, lon: 25.45 },
       ],
     })
-    app.setTab('route')
+    app.setView('route')
+    app.setSheetPos('half')
   })
   await page.getByTestId('route-metrics').waitFor()
-  await page.screenshot({ path: `${DIR}/4-reitti.png` })
+  await page.screenshot({ path: `${DIR}/${p}-4-reitti.png` })
 })

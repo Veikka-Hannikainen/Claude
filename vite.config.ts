@@ -15,8 +15,8 @@ export default defineConfig({
         description: 'Päijänteen luonnonsatamien löytäjä ja veneretkien suunnittelija',
         lang: 'fi',
         display: 'standalone',
-        theme_color: '#0b3d5c',
-        background_color: '#0b3d5c',
+        theme_color: '#ffffff',
+        background_color: '#eef1f4',
         icons: [
           { src: 'icons/icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },
           { src: 'icons/icon-maskable.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'maskable' },
@@ -29,7 +29,7 @@ export default defineConfig({
           {
             // Karttatiilet: kotona selatut alueet toimivat veneessä ilman verkkoa
             urlPattern: ({ url }) =>
-              /tile\.openstreetmap\.org|avoin-karttakuva\.maanmittauslaitos\.fi|services\.arcgisonline\.com/.test(
+              /tile\.openstreetmap\.org|avoin-karttakuva\.maanmittauslaitos\.fi|arcgisonline\.com|cartocdn\.com/.test(
                 url.host,
               ),
             handler: 'CacheFirst',

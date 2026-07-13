@@ -5,6 +5,8 @@ import { t } from '../i18n/fi'
 import FetchRose from './FetchRose'
 import SpotForm from './SpotForm'
 import SpotList from './SpotList'
+import { FeatureIcon } from './FeatureIcons'
+import { DayBadges, HourStrips, useShelterDays } from './ShelterForecast'
 
 export default function SpotPanel() {
   const selectedSpotId = useApp((s) => s.selectedSpotId)
@@ -12,6 +14,7 @@ export default function SpotPanel() {
   const computed = useApp((s) => s.computed)
   const waterState = useApp((s) => s.waterState)
   const editingSpotId = useApp((s) => s.editingSpotId)
+  const favoriteIds = useApp((s) => s.favoriteIds)
   const spot = findSpot(userSpots, selectedSpotId)
 
   const comp = spot ? computed[computedKey(spot)] : undefined
@@ -20,88 +23,146 @@ export default function SpotPanel() {
     const az = sunsetAzimuthDeg(new Date(), spot.lat, spot.lon)
     return { az, openness: comp ? sunsetOpenness(comp.fetchKm, az) : null }
   }, [spot, comp])
+  const shelter = useShelterDays(spot, comp)
 
   if (!spot) return <SpotList />
   if (editingSpotId === spot.id) return <SpotForm spot={spot} />
 
   const app = useApp.getState()
+  const fav = favoriteIds.includes(spot.id)
   return (
-    <div className="panel-content" data-testid="spot-panel">
-      <div className="panel-head">
-        <button className="link" onClick={() => app.selectSpot(null)}>
+    <div data-testid="spot-panel">
+      <div className="card-head">
+        <button className="link back" onClick={() => app.selectSpot(null)}>
           ‹ {t.spots.listTitle}
         </button>
-        <h2>{spot.name}</h2>
+        <span className="spacer" />
+        <span
+          className={`fav-star${fav ? ' on' : ''}`}
+          role="button"
+          data-testid="fav-toggle"
+          aria-label={t.spots.favorite}
+          aria-pressed={fav}
+          onClick={() => app.toggleFavorite(spot.id)}
+        >
+          ★
+        </span>
+      </div>
+      <div className="panel-head">
+        <h1>{spot.name}</h1>
         <div className="badges">
           <span className="badge">{spot.isIsland ? t.spots.island : t.spots.mainland}</span>
-          {spot.seed && <span className="badge subtle">{t.spots.seedBadge}</span>}
+          {!spot.seed && <span className="badge">{t.spots.ownBadge}</span>}
           {spot.coordsApproximate && <span className="badge warn">{t.spots.approxBadge}</span>}
           {comp?.nearFairway && <span className="badge bad">{t.spots.nearFairway}</span>}
           {sunset?.openness && (
-            <span className={`badge ${sunset.openness === 'kyllä' ? 'ok' : sunset.openness === 'osittain' ? 'warn' : 'subtle'}`}>
+            <span className={`badge ${sunset.openness === 'kyllä' ? 'ok' : sunset.openness === 'osittain' ? 'warn' : ''}`}>
               {t.spots.sunset}: {t.spots.sunsetOpen[sunset.openness]}
             </span>
           )}
         </div>
+        {spot.features && spot.features.length > 0 && (
+          <div className="feat-chips" data-testid="feature-chips">
+            {spot.features.map((f) => (
+              <span key={f} className="feat-chip">
+                <FeatureIcon tag={f} />
+                {t.features[f]}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
-      {comp ? (
-        <>
-          <FetchRose fetchKm={comp.fetchKm} sunsetAzimuth={sunset?.az} />
-          {comp.fairwayDistM != null && (
-            <p className="kv">
-              {t.spots.fairwayDist}: <strong>{comp.fairwayDistM >= 5000 ? `${t.spots.over} 5 km` : `${comp.fairwayDistM} m`}</strong>
-            </p>
-          )}
-        </>
+      {/* 5 vrk tuulensuoja suoraan kortissa */}
+      {shelter.days ? (
+        <DayBadges days={shelter.days} />
+      ) : shelter.loading ? (
+        <p className="muted small">{t.forecast.loading}</p>
+      ) : shelter.error ? (
+        <p className="alert">{shelter.error}</p>
+      ) : !comp && waterState.status !== 'ready' ? (
+        <p className="muted small">{t.forecast.needsCompute}</p>
       ) : (
-        <p className="muted">
-          {waterState.status === 'ready' ? t.spots.computing : t.spots.needsWater}
-        </p>
+        <p className="muted small">{t.spots.computing}</p>
       )}
 
       {spot.notes && (
-        <section>
+        <section className="block">
           <h3>{t.spots.notes}</h3>
           <p>{spot.notes}</p>
         </section>
       )}
       {spot.approach && (
-        <section>
+        <section className="block">
           <h3>{t.spots.approach}</h3>
           <p>{spot.approach}</p>
         </section>
       )}
+
+      <details className="block" data-testid="analysis">
+        <summary>{t.spots.analysis}</summary>
+        <div className="block-body">
+          {comp ? (
+            <>
+              <FetchRose fetchKm={comp.fetchKm} sunsetAzimuth={sunset?.az} />
+              {comp.fairwayDistM != null && (
+                <p className="kv">
+                  {t.spots.fairwayDist}:{' '}
+                  <strong>
+                    {comp.fairwayDistM >= 5000 ? `${t.spots.over} 5 km` : `${comp.fairwayDistM} m`}
+                  </strong>
+                </p>
+              )}
+              {shelter.days && <HourStrips days={shelter.days} />}
+              {shelter.forecast && (
+                <p className="muted small">
+                  {t.forecast.updated}{' '}
+                  {new Date(shelter.forecast.fetchedAt).toLocaleTimeString('fi-FI', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </p>
+              )}
+            </>
+          ) : (
+            <p className="muted">
+              {waterState.status === 'ready' ? t.spots.computing : t.spots.needsWater}
+            </p>
+          )}
+        </div>
+      </details>
+
       {(spot.sourceLinks?.length || spot.photoLinks?.length) ? (
-        <section>
-          <h3>{t.spots.sources}</h3>
-          <ul className="links">
-            {[...(spot.sourceLinks ?? []), ...(spot.photoLinks ?? [])].map((url) => (
-              <li key={url}>
-                <a href={url} target="_blank" rel="noreferrer">
-                  {new URL(url).hostname}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <details className="block">
+          <summary>{t.spots.sources}</summary>
+          <div className="block-body">
+            <ul className="links">
+              {[...(spot.sourceLinks ?? []), ...(spot.photoLinks ?? [])].map((url) => (
+                <li key={url}>
+                  <a href={url} target="_blank" rel="noreferrer">
+                    {new URL(url).hostname}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </details>
       ) : null}
 
+      <button
+        className="cta"
+        onClick={() => {
+          const id = `route-${Date.now()}`
+          app.addRoute({ id, name: spot.name, waypoints: [{ lat: spot.lat, lon: spot.lon }] })
+          app.setMode('edit-route')
+          app.setView('route')
+          app.setSheetPos('peek')
+        }}
+      >
+        {t.route.toSpot}
+      </button>
       <div className="btn-row">
-        <button onClick={() => app.setTab('forecast')}>{t.forecast.title}</button>
-        <button
-          onClick={() => {
-            const id = `route-${Date.now()}`
-            app.addRoute({ id, name: spot.name, waypoints: [{ lat: spot.lat, lon: spot.lon }] })
-            app.setMode('edit-route')
-            app.setTab('route')
-          }}
-        >
-          {t.route.toSpot}
-        </button>
-      </div>
-      <div className="btn-row">
-        {!spot.seed && (
+        {!spot.seed ? (
           <>
             <button onClick={() => app.setEditingSpot(spot.id)}>{t.spots.edit}</button>
             <button
@@ -113,8 +174,7 @@ export default function SpotPanel() {
               {t.spots.remove}
             </button>
           </>
-        )}
-        {spot.seed && (
+        ) : (
           <button
             onClick={() => {
               const id = `own-${Date.now()}`
@@ -127,7 +187,6 @@ export default function SpotPanel() {
           </button>
         )}
       </div>
-      {!spot.seed && editingSpotId !== spot.id && <p className="muted small">{t.spots.dragHint}</p>}
     </div>
   )
 }

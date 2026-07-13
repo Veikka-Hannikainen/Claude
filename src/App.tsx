@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import MapView from './components/MapView'
+import BottomSheet from './components/BottomSheet'
+import SpotList from './components/SpotList'
 import SpotPanel from './components/SpotPanel'
 import RoutePanel from './components/RoutePanel'
-import ForecastPanel from './components/ForecastPanel'
 import SettingsDialog from './components/SettingsDialog'
 import DataBanner from './components/DataBanner'
 import { computedKey, useApp } from './state/store'
@@ -23,7 +24,9 @@ async function bootstrap() {
 }
 
 export default function App() {
-  const tab = useApp((s) => s.tab)
+  const view = useApp((s) => s.view)
+  const mode = useApp((s) => s.mode)
+  const sheetPos = useApp((s) => s.sheetPos)
   const [showSettings, setShowSettings] = useState(false)
   const inflight = useRef(new Set<string>())
 
@@ -64,46 +67,62 @@ export default function App() {
   }, [waterCompute, fairwayLines, fairwayAreas, userSpots, computed])
 
   return (
-    <div className="app">
-      <header className="topbar">
-        <h1>{t.appName}</h1>
-        <button className="icon-btn" aria-label={t.settings.title} onClick={() => setShowSettings(true)}>
-          ⚙
-        </button>
-      </header>
-      <div className="main">
-        <div className="map-wrap">
-          <DataBanner
-            onRetry={() => {
-              void bootstrap()
-            }}
-          />
-          <MapView />
-        </div>
-        <aside className="panel">
-          <nav className="tabs">
-            {(
-              [
-                ['spot', t.tabs.spot],
-                ['route', t.tabs.route],
-                ['forecast', t.tabs.forecast],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                className={tab === id ? 'active' : ''}
-                data-testid={`tab-${id}`}
-                onClick={() => useApp.getState().setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-          {tab === 'spot' && <SpotPanel />}
-          {tab === 'route' && <RoutePanel />}
-          {tab === 'forecast' && <ForecastPanel />}
-        </aside>
+    <div className={`app sheet-${sheetPos}`}>
+      <div className="map-wrap">
+        <MapView />
       </div>
+
+      <div className="brand-pill">
+        <span className="wave">⚓</span>
+        {t.appName}
+      </div>
+      <button
+        className="round-btn settings-btn"
+        aria-label={t.settings.title}
+        data-testid="open-settings"
+        onClick={() => setShowSettings(true)}
+      >
+        ⚙
+      </button>
+      <DataBanner
+        onRetry={() => {
+          void bootstrap()
+        }}
+      />
+
+      <button
+        className={`fab${mode === 'add-spot' ? ' active' : ''}`}
+        aria-label={t.spots.addSpot}
+        data-testid="add-spot"
+        onClick={() => {
+          const st = useApp.getState()
+          if (st.mode === 'add-spot') {
+            st.setMode('browse')
+          } else {
+            st.setMode('add-spot')
+            st.setSheetPos('peek')
+          }
+        }}
+      >
+        {mode === 'add-spot' ? '×' : '+'}
+      </button>
+      {mode === 'add-spot' && (
+        <div className="hint-pill" style={{ bottom: 'calc(50% - 20px)' }}>
+          {t.spots.addHint}
+        </div>
+      )}
+      {mode === 'edit-route' && (
+        <div className="hint-pill" style={{ top: 'calc(64px + env(safe-area-inset-top))' }}>
+          {t.route.editHint}
+        </div>
+      )}
+
+      <BottomSheet>
+        {view === 'list' && <SpotList />}
+        {view === 'spot' && <SpotPanel />}
+        {view === 'route' && <RoutePanel />}
+      </BottomSheet>
+
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </div>
   )

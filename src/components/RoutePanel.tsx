@@ -25,16 +25,33 @@ export default function RoutePanel() {
   }, [route, waterCompute])
   const crossing = legChecks.some((c) => c.crossesLand)
 
+  const arrival =
+    metrics && metrics.hours > 0
+      ? new Date(Date.now() + metrics.hours * 3600_000).toLocaleTimeString('fi-FI', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+      : null
+
   return (
-    <div className="panel-content" data-testid="route-panel">
-      <div className="panel-head">
-        <h2>{t.route.title}</h2>
-        {routes.length > 0 && (
+    <div data-testid="route-panel">
+      <div className="card-head">
+        <button
+          className="link back"
+          onClick={() => {
+            app.setMode('browse')
+            app.setView(useApp.getState().selectedSpotId ? 'spot' : 'list')
+          }}
+        >
+          ‹ {t.route.title}
+        </button>
+        <span className="spacer" />
+        {routes.length > 1 && (
           <select
+            style={{ width: 'auto', marginTop: 0 }}
             value={activeRouteId ?? ''}
             onChange={(e) => app.setActiveRoute(e.target.value || null)}
           >
-            <option value="">—</option>
             {routes.map((r) => (
               <option key={r.id} value={r.id}>
                 {r.name}
@@ -48,12 +65,13 @@ export default function RoutePanel() {
         <>
           <p className="muted">{t.route.noRoute}</p>
           <button
-            className="primary"
+            className="cta"
             data-testid="new-route"
             onClick={() => {
               const id = `route-${Date.now()}`
               app.addRoute({ id, name: `Reitti ${routes.length + 1}`, waypoints: [] })
               app.setMode('edit-route')
+              app.setSheetPos('peek')
             }}
           >
             + {t.route.newRoute}
@@ -68,37 +86,32 @@ export default function RoutePanel() {
             value={route.name}
             onChange={(e) => app.updateRoute(route.id, { name: e.target.value })}
           />
-          <p className="muted small">
-            {route.waypoints.length} {t.route.waypoints}
-            {mode === 'edit-route' && ` — ${t.route.editHint}`}
-          </p>
+          <div className="route-hud" data-testid="route-metrics">
+            <div className="big-time">{formatDuration(metrics.hours)}</div>
+            <div className="meta-row">
+              {arrival && (
+                <>
+                  {t.route.arrival} {arrival} ·{' '}
+                </>
+              )}
+              {metrics.totalNm.toFixed(1)} {t.units.nm} · {metrics.fuelL.toFixed(0)} {t.units.l} (
+              {metrics.fuelCostEur.toFixed(0)} {t.units.eur})
+            </div>
+            <p className="muted small" style={{ marginTop: 6 }}>
+              {route.waypoints.length} {t.route.waypoints} · {metrics.totalKm.toFixed(1)} {t.units.km}
+            </p>
+          </div>
+
           {crossing && (
             <p className="alert" data-testid="land-warning">
               ⚠ {t.route.landWarning}
               <br />
-              {legChecks.map((c, i) => (c.crossesLand ? <span key={i}>{t.route.legCrossesLand(i + 1)} </span> : null))}
+              {legChecks.map((c, i) =>
+                c.crossesLand ? <span key={i}>{t.route.legCrossesLand(i + 1)} </span> : null,
+              )}
             </p>
           )}
-          <dl className="metrics" data-testid="route-metrics">
-            <div>
-              <dt>{t.route.distance}</dt>
-              <dd>
-                {metrics.totalNm.toFixed(1)} {t.units.nm} ({metrics.totalKm.toFixed(1)} {t.units.km})
-              </dd>
-            </div>
-            <div>
-              <dt>
-                {t.route.duration} @ {settings.cruiseKn} {t.units.kn}
-              </dt>
-              <dd>{formatDuration(metrics.hours)}</dd>
-            </div>
-            <div>
-              <dt>{t.route.fuel}</dt>
-              <dd>
-                {metrics.fuelL.toFixed(0)} {t.units.l} · {metrics.fuelCostEur.toFixed(0)} {t.units.eur}
-              </dd>
-            </div>
-          </dl>
+
           <label className="slider">
             {t.route.speed}: {settings.cruiseKn} {t.units.kn}
             <input
@@ -111,16 +124,17 @@ export default function RoutePanel() {
             />
           </label>
           {waterCompute && <p className="muted small">{t.route.shorelineCaveat}</p>}
+
+          {mode === 'edit-route' ? (
+            <button className="cta" onClick={() => app.setMode('browse')}>
+              {t.route.done}
+            </button>
+          ) : (
+            <button className="cta" onClick={() => { app.setMode('edit-route'); app.setSheetPos('peek') }}>
+              {t.route.startEditing}
+            </button>
+          )}
           <div className="btn-row">
-            {mode === 'edit-route' ? (
-              <button className="primary" onClick={() => app.setMode('browse')}>
-                {t.route.stopEditing}
-              </button>
-            ) : (
-              <button className="primary" onClick={() => app.setMode('edit-route')}>
-                {t.route.startEditing}
-              </button>
-            )}
             <button
               className="danger"
               onClick={() => {

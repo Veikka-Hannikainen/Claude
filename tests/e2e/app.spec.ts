@@ -27,7 +27,7 @@ async function mockNetwork(page: Page) {
     route.fulfill({ json: fairwayAreasFixture }),
   )
   await page.route(/api\.open-meteo\.com/, (route) => route.fulfill({ json: openMeteoFixture() }))
-  await page.route(/tile\.openstreetmap\.org/, (route) =>
+  await page.route(/tile\.openstreetmap\.org|cartocdn\.com/, (route) =>
     route.fulfill({ body: TILE, contentType: 'image/png' }),
   )
 }
@@ -54,8 +54,15 @@ async function waitForWater(page: Page) {
   )
 }
 
-test('app loads, downloads data and lists curated spots', async ({ page }) => {
+/** Karttaklikkaus näkyvälle vesialueelle (sheetin ja kontrollien ulkopuolelle) */
+async function clickMap(page: Page) {
+  const vp = page.viewportSize()!
+  await page.getByTestId('map').click({ position: { x: Math.round(vp.width * 0.4), y: 230 } })
+}
+
+test('app loads, downloads data and lists curated spots in the sheet', async ({ page }) => {
   await expect(page.getByTestId('map')).toBeVisible()
+  await expect(page.getByTestId('sheet')).toBeVisible()
   await expect(page.getByTestId('spot-list')).toBeVisible()
   await expect(page.getByTestId('spot-list').getByText('Kelvenne · Kirkkosalmi')).toBeVisible()
   await waitForWater(page)
@@ -63,19 +70,27 @@ test('app loads, downloads data and lists curated spots', async ({ page }) => {
   await expect(page.getByTestId('data-banner')).toHaveCount(0)
 })
 
-test('spot panel shows fetch rose, sunset badge and fairway distance', async ({ page }) => {
+test('spot card shows day badges, analysis disclosure with rose and fairway distance', async ({
+  page,
+}) => {
   await waitForWater(page)
   await page.getByTestId('spot-list').getByText('Kelvenne · Kirkkosalmi').click()
   await expect(page.getByTestId('spot-panel')).toBeVisible()
-  // Laskenta valmistuu ja ruusu piirtyy
-  await expect(page.locator('.fetch-rose svg path').first()).toBeVisible({ timeout: 20_000 })
+  // 5 vrk suojaennuste haetaan automaattisesti kortille
+  await expect(page.getByTestId('day-badges')).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(/Auringonlasku:/)).toBeVisible()
+  // Palveluikonit näkyvät
+  await expect(
+    page.getByTestId('feature-chips').locator('.feat-chip', { hasText: 'Nuotiopaikka' }),
+  ).toBeVisible()
+  // Suoja-analyysi aukeaa disclosuresta
+  await page.getByTestId('analysis').locator('summary').click()
+  await expect(page.locator('.fetch-rose svg path').first()).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(/Etäisyys väylään/)).toBeVisible()
 })
 
 test('spot next to a fairway gets the nearFairway warning', async ({ page }) => {
   await waitForWater(page)
-  // Pulkkilanharju on fixture-väylän vieressä
   await page.getByTestId('spot-list').getByText('Pulkkilanharju', { exact: false }).click()
   await expect(page.getByTestId('spot-panel')).toBeVisible()
   await expect(page.locator('.badge', { hasText: 'Väylä lähellä' })).toBeVisible({
@@ -83,14 +98,39 @@ test('spot next to a fairway gets the nearFairway warning', async ({ page }) => 
   })
 })
 
-test('adding an own spot via map click persists across reload', async ({ page }) => {
+test('favorite toggle persists and favorites filter works', async ({ page }) => {
+  await waitForWater(page)
+  await page.getByTestId('spot-list').getByText('Kelvenne · Likolahti').click()
+  await page.getByTestId('fav-toggle').click()
+  await expect(page.getByTestId('fav-toggle')).toHaveClass(/on/)
+  await page.reload()
+  await page.getByTestId('filter-favorites').click()
+  const rows = page.getByTestId('spot-list').locator('.spot-row')
+  await expect(rows).toHaveCount(1)
+  await expect(rows.first()).toContainText('Kelvenne · Likolahti')
+})
+
+test('sauna filter shows only spots with a sauna', async ({ page }) => {
+  await waitForWater(page)
+  await page.getByTestId('filter-sauna').click()
+  const list = page.getByTestId('spot-list')
+  await expect(list.getByText('Sahanranta', { exact: false })).toBeVisible()
+  await expect(list.getByText('Kelvenne · Kirkkosalmi')).toHaveCount(0)
+})
+
+test('adding an own spot via FAB and map click persists across reload', async ({ page }) => {
   await waitForWater(page)
   await page.getByTestId('add-spot').click()
-  await page.getByTestId('map').click({ position: { x: 400, y: 300 } })
+  await clickMap(page)
   await expect(page.getByTestId('spot-form')).toBeVisible()
   await page.getByTestId('spot-name').fill('Testipoukama')
+  // Palvelutagi mukaan
+  await page.getByTestId('feature-sauna').click()
   await page.getByTestId('spot-save').click()
   await expect(page.getByTestId('spot-panel')).toBeVisible()
+  await expect(
+    page.getByTestId('feature-chips').locator('.feat-chip', { hasText: 'Sauna' }),
+  ).toBeVisible()
   await page.reload()
   await expect(page.getByTestId('spot-list').getByText('Testipoukama')).toBeVisible()
 })
@@ -108,7 +148,7 @@ test('route across the island warns, route around it does not', async ({ page })
         { lat: 61.6, lon: 25.55 },
       ],
     })
-    app.setTab('route')
+    app.setView('route')
   })
   await expect(page.getByTestId('route-panel')).toBeVisible()
   await expect(page.getByTestId('land-warning')).toBeVisible()
@@ -127,7 +167,7 @@ test('route across the island warns, route around it does not', async ({ page })
   const metrics = page.getByTestId('route-metrics')
   await expect(metrics).toContainText('mpk')
   await expect(metrics).toContainText('min')
-  await expect(metrics).toContainText('l ·')
+  await expect(metrics).toContainText('l (')
 })
 
 test('route metrics: ~10 nm at 20 kn ≈ 30 min and ~11 L', async ({ page }) => {
@@ -143,7 +183,7 @@ test('route metrics: ~10 nm at 20 kn ≈ 30 min and ~11 L', async ({ page }) => 
         { lat: 61.1 + 18.52 / 111.32, lon: 25.2 },
       ],
     })
-    app.setTab('route')
+    app.setView('route')
   })
   const metrics = page.getByTestId('route-metrics')
   await expect(metrics).toContainText('10.0 mpk')
@@ -151,7 +191,7 @@ test('route metrics: ~10 nm at 20 kn ≈ 30 min and ~11 L', async ({ page }) => 
   await expect(metrics).toContainText('11 l')
 })
 
-test('5-day shelter forecast: west wind → east-of-island sheltered, open west shore exposed', async ({
+test('5-day shelter: west wind → east-of-island sheltered, open west shore exposed', async ({
   page,
 }) => {
   await waitForWater(page)
@@ -161,7 +201,6 @@ test('5-day shelter forecast: west wind → east-of-island sheltered, open west 
     app.addSpot({ id: 'e2e-east', name: 'Saaren itäpuoli', lat: 61.6, lon: 25.5305, isIsland: true })
     app.addSpot({ id: 'e2e-west', name: 'Avoin länsiranta', lat: 61.6, lon: 25.2, isIsland: false })
   })
-  // Odota laskenta molemmille
   await page.waitForFunction(() => {
     const st = window.__appStore.getState()
     const keys = Object.keys(st.computed)
@@ -170,9 +209,7 @@ test('5-day shelter forecast: west wind → east-of-island sheltered, open west 
 
   // Itäpuoli: länsituulelta suojassa
   await page.evaluate(() => {
-    const app = window.__appStore.getState()
-    app.selectSpot('e2e-east')
-    app.setTab('forecast')
+    window.__appStore.getState().selectSpot('e2e-east')
   })
   await expect(page.getByTestId('day-badges')).toBeVisible({ timeout: 15_000 })
   const eastBadges = page.locator('.day-badge')
@@ -211,7 +248,7 @@ test('export and import round-trip preserves own spots', async ({ page }) => {
   })
   // Tyhjennä ja tuo takaisin
   await page.evaluate(() => {
-    window.__appStore.setState({ userSpots: [], routes: [] })
+    window.__appStore.setState({ userSpots: [], routes: [], selectedSpotId: null, view: 'list' })
   })
   await expect(page.getByTestId('spot-list').getByText('Vientipaikka')).toHaveCount(0)
   await page.evaluate((text) => {
@@ -219,4 +256,13 @@ test('export and import round-trip preserves own spots', async ({ page }) => {
     window.__appStore.getState().importUserData(json)
   }, blob)
   await expect(page.getByTestId('spot-list').getByText('Vientipaikka')).toBeVisible()
+})
+
+test('mobile: sheet snaps between positions via handle taps', async ({ page }) => {
+  test.skip(page.viewportSize()!.width > 720, 'vain mobiilissa')
+  await expect(page.getByTestId('sheet')).toHaveClass(/pos-half/)
+  await page.getByTestId('sheet-handle').click()
+  await expect(page.getByTestId('sheet')).toHaveClass(/pos-full/)
+  await page.getByTestId('sheet-handle').click()
+  await expect(page.getByTestId('sheet')).toHaveClass(/pos-half/)
 })

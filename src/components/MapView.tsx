@@ -5,13 +5,16 @@ import type { FeatureCollection } from 'geojson'
 import { useApp } from '../state/store'
 import { SEED_SPOTS } from '../data/spotsSeed'
 import { checkLegs, buildShoreIndex } from '../lib/geo/landCrossing'
+import { routeMetrics } from '../lib/route/metrics'
 import type { Settings, Spot, WaterPolygon } from '../lib/types'
 
 const PAIJANNE_CENTER: [number, number] = [25.45, 61.6]
+/** Zoom-taso jolta alkaen paikkojen nimet näytetään */
+const LABEL_ZOOM = 10.5
 
 function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
   const sources: Record<string, maplibregl.SourceSpecification> = {}
-  let layerSource = 'osm'
+  let layerSource = 'kartta'
   if (settings.basemap === 'mml' && settings.mmlApiKey) {
     sources.mml = {
       type: 'raster',
@@ -34,7 +37,7 @@ function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
       attribution: '© Esri, Maxar, Earthstar Geographics',
     }
     layerSource = 'esri'
-  } else {
+  } else if (settings.basemap === 'osm') {
     sources.osm = {
       type: 'raster',
       tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
@@ -42,12 +45,21 @@ function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
       maxzoom: 19,
       attribution: '© OpenStreetMap-tekijät',
     }
+    layerSource = 'osm'
+  } else {
+    sources.kartta = {
+      type: 'raster',
+      tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: '© OpenStreetMap © CARTO',
+    }
   }
   return {
     version: 8,
     sources,
     layers: [
-      { id: 'bg', type: 'background', paint: { 'background-color': '#0b2233' } },
+      { id: 'bg', type: 'background', paint: { 'background-color': '#eef1f4' } },
       { id: 'basemap', type: 'raster', source: layerSource },
     ],
   }
@@ -67,7 +79,7 @@ function addOverlays(map: MlMap) {
       id: 'water-outline',
       type: 'line',
       source: 'water-render',
-      paint: { 'line-color': '#3fa7dd', 'line-width': 1, 'line-opacity': 0.8 },
+      paint: { 'line-color': 'rgba(42,120,214,0.5)', 'line-width': 1 },
     })
   }
   if (!map.getLayer('fairway-areas-fill')) {
@@ -75,7 +87,7 @@ function addOverlays(map: MlMap) {
       id: 'fairway-areas-fill',
       type: 'fill',
       source: 'fairway-areas',
-      paint: { 'fill-color': '#ffb703', 'fill-opacity': 0.12 },
+      paint: { 'fill-color': '#d9a20b', 'fill-opacity': 0.08 },
     })
   }
   if (!map.getLayer('fairway-lines-line')) {
@@ -84,32 +96,55 @@ function addOverlays(map: MlMap) {
       type: 'line',
       source: 'fairway-lines',
       paint: {
-        'line-color': '#ffb703',
-        'line-width': 1.5,
-        'line-opacity': 0.7,
+        'line-color': '#d9a20b',
+        'line-width': 1.2,
+        'line-opacity': 0.55,
         'line-dasharray': [3, 2],
       },
     })
   }
-  if (!map.getLayer('route-legs-line')) {
+  // Reitti: valkoinen reunus + sininen viiva; maata leikkaava etappi punaisella
+  if (!map.getLayer('route-casing')) {
     map.addLayer({
-      id: 'route-legs-line',
+      id: 'route-casing',
       type: 'line',
       source: 'route-legs',
-      paint: {
-        'line-color': ['case', ['get', 'crossesLand'], '#e63946', '#00b4d8'],
-        'line-width': 3,
-        'line-dasharray': ['case', ['get', 'crossesLand'], ['literal', [1.5, 1.5]], ['literal', [1, 0]]],
-      },
+      filter: ['!', ['get', 'crossesLand']],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-opacity': 0.9 },
+    })
+  }
+  if (!map.getLayer('route-line')) {
+    map.addLayer({
+      id: 'route-line',
+      type: 'line',
+      source: 'route-legs',
+      filter: ['!', ['get', 'crossesLand']],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#2f6fed', 'line-width': 5 },
+    })
+  }
+  if (!map.getLayer('route-bad')) {
+    map.addLayer({
+      id: 'route-bad',
+      type: 'line',
+      source: 'route-legs',
+      filter: ['get', 'crossesLand'],
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#d03b3b', 'line-width': 4, 'line-dasharray': [1.4, 1.6] },
     })
   }
 }
 
-function spotMarkerEl(spot: Spot, selected: boolean): HTMLDivElement {
+function spotMarkerEl(spot: Spot): HTMLDivElement {
   const el = document.createElement('div')
-  el.className = `spot-marker${spot.seed ? ' seed' : ' own'}${selected ? ' selected' : ''}`
-  el.innerHTML = `<span class="dot">${spot.isIsland ? '⛰' : '⚓'}</span><span class="lbl">${spot.name}</span>`
+  el.innerHTML = `<span class="dot"><span class="fav-dot" hidden>★</span></span><span class="lbl"></span>`
+  el.querySelector('.lbl')!.textContent = spot.name
   return el
+}
+
+function markerClass(spot: Spot, selected: boolean, favorite: boolean, draggable: boolean): string {
+  return `spot-marker${spot.seed ? ' seed' : ' own'}${selected ? ' selected' : ''}${draggable ? ' draggable' : ''}${favorite ? ' fav' : ''}`
 }
 
 export default function MapView() {
@@ -130,12 +165,15 @@ export default function MapView() {
       zoom: 8,
       attributionControl: { compact: true },
     })
-    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), 'top-left')
-    map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: true }), 'top-left')
-    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }))
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right')
+    map.addControl(new maplibregl.GeolocateControl({ trackUserLocation: true }), 'bottom-right')
+    map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left')
     map.on('style.load', () => {
       addOverlays(map)
       syncOverlayData(map)
+    })
+    map.on('zoom', () => {
+      containerRef.current?.classList.toggle('show-labels', map.getZoom() >= LABEL_ZOOM)
     })
     map.on('click', (e) => {
       const { mode, activeRouteId } = useApp.getState()
@@ -246,6 +284,7 @@ export default function MapView() {
   const userSpots = useApp((s) => s.userSpots)
   const selectedSpotId = useApp((s) => s.selectedSpotId)
   const editingSpotId = useApp((s) => s.editingSpotId)
+  const favoriteIds = useApp((s) => s.favoriteIds)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -255,13 +294,15 @@ export default function MapView() {
       seen.add(spot.id)
       let marker = spotMarkers.current.get(spot.id)
       const draggable = spot.id === editingSpotId && !spot.seed
+      const favorite = favoriteIds.includes(spot.id)
       if (!marker) {
-        const el = spotMarkerEl(spot, spot.id === selectedSpotId)
+        const el = spotMarkerEl(spot)
+        el.className = markerClass(spot, spot.id === selectedSpotId, favorite, draggable)
         el.addEventListener('click', (ev) => {
           ev.stopPropagation()
           useApp.getState().selectSpot(spot.id)
         })
-        marker = new Marker({ element: el, anchor: 'bottom', draggable })
+        marker = new Marker({ element: el, anchor: 'center', draggable })
           .setLngLat([spot.lon, spot.lat])
           .addTo(map)
         marker.on('dragend', () => {
@@ -273,10 +314,12 @@ export default function MapView() {
         marker.setLngLat([spot.lon, spot.lat])
         marker.setDraggable(draggable)
         const el = marker.getElement()
-        el.className = `spot-marker${spot.seed ? ' seed' : ' own'}${spot.id === selectedSpotId ? ' selected' : ''}${draggable ? ' draggable' : ''}`
+        el.className = markerClass(spot, spot.id === selectedSpotId, favorite, draggable)
         const lbl = el.querySelector('.lbl')
         if (lbl && lbl.textContent !== spot.name) lbl.textContent = spot.name
       }
+      const favDot = marker.getElement().querySelector<HTMLElement>('.fav-dot')
+      if (favDot) favDot.hidden = !favorite
     }
     for (const [id, marker] of spotMarkers.current) {
       if (!seen.has(id)) {
@@ -284,10 +327,11 @@ export default function MapView() {
         spotMarkers.current.delete(id)
       }
     }
-  }, [userSpots, selectedSpotId, editingSpotId])
+  }, [userSpots, selectedSpotId, editingSpotId, favoriteIds])
 
-  // Reittipistemarkerit (vain aktiivinen reitti muokkaustilassa)
+  // Reittipisteet + kumulatiiviset aikapillerit (aktiivinen reitti)
   const mode = useApp((s) => s.mode)
+  const cruiseKn = useApp((s) => s.settings.cruiseKn)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -296,10 +340,14 @@ export default function MapView() {
     const st = useApp.getState()
     const route = st.routes.find((r) => r.id === st.activeRouteId)
     if (!route) return
+
+    const metrics = routeMetrics(route.waypoints, st.settings.cruiseKn, st.settings.fuelLph, st.settings.fuelPriceEur)
+    const departure = Date.now()
+    let cumulativeNm = 0
+
     route.waypoints.forEach((wp, i) => {
       const el = document.createElement('div')
       el.className = 'wp-marker'
-      el.textContent = String(i + 1)
       const marker = new Marker({ element: el, draggable: mode === 'edit-route' })
         .setLngLat([wp.lon, wp.lat])
         .addTo(map)
@@ -319,8 +367,25 @@ export default function MapView() {
         })
       }
       wpMarkers.current.push(marker)
+
+      // Aikapilleri: arvioitu kellonaika tälle pisteelle
+      if (i > 0 && st.settings.cruiseKn > 0 && metrics.legs[i - 1]) {
+        cumulativeNm += metrics.legs[i - 1].nm
+        const etaMs = departure + (cumulativeNm / st.settings.cruiseKn) * 3600_000
+        const pill = document.createElement('div')
+        pill.className = 'time-pill'
+        pill.textContent = new Date(etaMs).toLocaleTimeString('fi-FI', {
+          hour: '2-digit',
+          minute: '2-digit',
+        })
+        wpMarkers.current.push(
+          new Marker({ element: pill, anchor: 'bottom', offset: [0, -14] })
+            .setLngLat([wp.lon, wp.lat])
+            .addTo(map),
+        )
+      }
     })
-  }, [routes, activeRouteId, mode])
+  }, [routes, activeRouteId, mode, cruiseKn])
 
   const modeClass = mode === 'browse' ? '' : ' crosshair'
   return <div ref={containerRef} className={`map-container${modeClass}`} data-testid="map" />

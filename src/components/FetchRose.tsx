@@ -17,11 +17,12 @@ function wedgePath(bearingDeg: number, r: number): string {
   return `M ${C} ${C} L ${x0} ${y0} A ${r} ${r} 0 0 1 ${x1} ${y1} Z`
 }
 
+/** Sekventiaalinen sininen ramppi: vaalea = lyhyt fetch (suojainen), tumma = pitkä (altis) */
 function fetchColor(km: number): string {
-  if (km < 0.5) return 'var(--ok)'
-  if (km < 2) return '#9acd32'
-  if (km < 8) return 'var(--warn)'
-  return 'var(--bad)'
+  if (km < 0.5) return 'var(--rose-1)'
+  if (km < 2) return 'var(--rose-2)'
+  if (km < 8) return 'var(--rose-3)'
+  return 'var(--rose-4)'
 }
 
 /** 24-sektorinen ruusu: sektorin pituus = avoin vesimatka siihen suuntaan */
@@ -72,8 +73,8 @@ export default function FetchRose({
         })}
         {sunset && (
           <g>
-            <line x1={C} y1={C} x2={sunset.x} y2={sunset.y} stroke="#f4a261" strokeWidth={1.5} strokeDasharray="4 3" />
-            <circle cx={sunset.x} cy={sunset.y} r={5} fill="#f4a261">
+            <line x1={C} y1={C} x2={sunset.x} y2={sunset.y} stroke="#eb6834" strokeWidth={1.5} strokeDasharray="4 3" />
+            <circle cx={sunset.x} cy={sunset.y} r={5} fill="#eb6834">
               <title>{t.spots.sunset}</title>
             </circle>
           </g>

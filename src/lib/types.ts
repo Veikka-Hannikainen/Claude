@@ -1,5 +1,27 @@
 import type { Feature, FeatureCollection, LineString, MultiPolygon, Polygon } from 'geojson'
 
+/** Paikan palvelut ja ominaisuudet */
+export type FeatureTag =
+  | 'sauna'
+  | 'laituri'
+  | 'ankkurointi'
+  | 'nuotiopaikka'
+  | 'wc'
+  | 'uimaranta'
+  | 'telttailu'
+  | 'polku'
+
+export const FEATURE_TAGS: FeatureTag[] = [
+  'sauna',
+  'laituri',
+  'ankkurointi',
+  'nuotiopaikka',
+  'wc',
+  'uimaranta',
+  'telttailu',
+  'polku',
+]
+
 export interface Spot {
   id: string
   name: string
@@ -9,6 +31,7 @@ export interface Spot {
   notes?: string
   /** Tuloväylä, matalikot, varoitukset */
   approach?: string
+  features?: FeatureTag[]
   sourceLinks?: string[]
   photoLinks?: string[]
   /** Kuratoitu aloituslistan paikka (ei muokattavissa) */
@@ -47,12 +70,14 @@ export interface Route {
   waypoints: Waypoint[]
 }
 
+export type BasemapId = 'kartta' | 'osm' | 'mml' | 'esri'
+
 export interface Settings {
   cruiseKn: number
   fuelLph: number
   fuelPriceEur: number
   mmlApiKey: string
-  basemap: 'osm' | 'mml' | 'esri'
+  basemap: BasemapId
   showWaterOutline: boolean
 }
 
@@ -61,8 +86,8 @@ export const DEFAULT_SETTINGS: Settings = {
   fuelLph: 22,
   fuelPriceEur: 2.2,
   mmlApiKey: '',
-  basemap: 'osm',
-  showWaterOutline: true,
+  basemap: 'kartta',
+  showWaterOutline: false,
 }
 
 export type ShelterClass = 'suojassa' | 'kohtalainen' | 'altis'

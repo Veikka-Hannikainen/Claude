@@ -15,7 +15,9 @@ import {
 } from '../lib/types'
 
 export type Mode = 'browse' | 'add-spot' | 'edit-route'
-export type Tab = 'spot' | 'route' | 'forecast'
+/** Sheetin näkymä: lista → paikkakortti → reittieditori */
+export type View = 'list' | 'spot' | 'route'
+export type SheetPos = 'peek' | 'half' | 'full'
 
 /** Laskentatulos sidotaan koordinaattiin — spotin siirto mitätöi tuloksen */
 export function computedKey(spot: Pick<Spot, 'id' | 'lat' | 'lon'>): string {
@@ -40,7 +42,9 @@ interface AppState {
   routes: Route[]
   settings: Settings
   forecasts: Record<string, WindForecast>
+  favoriteIds: string[]
 
+  toggleFavorite: (id: string) => void
   addSpot: (spot: Spot) => void
   updateSpot: (id: string, patch: Partial<Spot>) => void
   removeSpot: (id: string) => void
@@ -56,12 +60,14 @@ interface AppState {
   selectedSpotId: string | null
   activeRouteId: string | null
   mode: Mode
-  tab: Tab
+  view: View
+  sheetPos: SheetPos
   editingSpotId: string | null
   selectSpot: (id: string | null) => void
   setActiveRoute: (id: string | null) => void
   setMode: (m: Mode) => void
-  setTab: (t: Tab) => void
+  setView: (v: View) => void
+  setSheetPos: (p: SheetPos) => void
   setEditingSpot: (id: string | null) => void
 }
 
@@ -83,7 +89,14 @@ export const useApp = create<AppState>()(
       routes: [],
       settings: DEFAULT_SETTINGS,
       forecasts: {},
+      favoriteIds: [],
 
+      toggleFavorite: (id) =>
+        set((s) => ({
+          favoriteIds: s.favoriteIds.includes(id)
+            ? s.favoriteIds.filter((f) => f !== id)
+            : [...s.favoriteIds, id],
+        })),
       addSpot: (spot) => set((s) => ({ userSpots: [...s.userSpots, spot] })),
       updateSpot: (id, patch) =>
         set((s) => ({
@@ -92,7 +105,9 @@ export const useApp = create<AppState>()(
       removeSpot: (id) =>
         set((s) => ({
           userSpots: s.userSpots.filter((sp) => sp.id !== id),
+          favoriteIds: s.favoriteIds.filter((f) => f !== id),
           selectedSpotId: s.selectedSpotId === id ? null : s.selectedSpotId,
+          view: s.selectedSpotId === id ? 'list' : s.view,
         })),
       setComputed: (key, value) => set((s) => ({ computed: { ...s.computed, [key]: value } })),
       addRoute: (route) => set((s) => ({ routes: [...s.routes, route], activeRouteId: route.id })),
@@ -103,6 +118,7 @@ export const useApp = create<AppState>()(
           routes: s.routes.filter((r) => r.id !== id),
           activeRouteId: s.activeRouteId === id ? null : s.activeRouteId,
           mode: s.activeRouteId === id && s.mode === 'edit-route' ? 'browse' : s.mode,
+          view: s.activeRouteId === id && s.view === 'route' ? 'list' : s.view,
         })),
       setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
       setForecast: (spotId, f) =>
@@ -122,13 +138,21 @@ export const useApp = create<AppState>()(
       selectedSpotId: null,
       activeRouteId: null,
       mode: 'browse',
-      tab: 'spot',
+      view: 'list',
+      sheetPos: 'half',
       editingSpotId: null,
       selectSpot: (selectedSpotId) =>
-        set((s) => ({ selectedSpotId, tab: selectedSpotId ? (s.tab === 'route' ? 'spot' : s.tab) : s.tab })),
+        set((s) => ({
+          selectedSpotId,
+          view: selectedSpotId ? 'spot' : s.view === 'spot' ? 'list' : s.view,
+          // Kartalta valittu paikka nostaa peek-sheetin näkyviin
+          sheetPos: selectedSpotId && s.sheetPos === 'peek' ? 'half' : s.sheetPos,
+          editingSpotId: null,
+        })),
       setActiveRoute: (activeRouteId) => set({ activeRouteId }),
       setMode: (mode) => set({ mode }),
-      setTab: (tab) => set({ tab }),
+      setView: (view) => set({ view }),
+      setSheetPos: (sheetPos) => set({ sheetPos }),
       setEditingSpot: (editingSpotId) => set({ editingSpotId }),
     }),
     {
@@ -139,6 +163,7 @@ export const useApp = create<AppState>()(
         routes: s.routes,
         settings: s.settings,
         forecasts: s.forecasts,
+        favoriteIds: s.favoriteIds,
         activeRouteId: s.activeRouteId,
       }),
     },

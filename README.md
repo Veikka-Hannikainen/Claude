@@ -7,12 +7,20 @@ kaikki arvot säädettävissä asetuksista.
 
 ## Ominaisuudet
 
-- **Karttanäkymä** (MapLibre): pohjakarttana OSM, MML:n ilmakuva (ilmainen api-avain)
-  tai Esri-satelliittikuva. Väyläviraston viralliset väylät overlay-tasona.
-- **Kuratoitu aloituslista** (~17 paikkaa): Kelventeen poukamat, Pulkkilanharju,
-  Haukkasalo, Judinsalo, Vaarunvuoret ym. Omia paikkoja voi lisätä klikkaamalla
-  ja siirtää raahaamalla — esim. satelliittikuvasta tai Päijänteen veneilijät
-  -ryhmän vinkeistä bongatut poukamat muistiinpanoineen ja lähdelinkkeineen.
+- **Orca-henkinen käyttöliittymä**: koko ruudun kartta, kelluvat pyöreät napit ja
+  raahattava bottom sheet mobiilissa (peek/half/full), kelluva kortti työpöydällä.
+- **Karttanäkymä** (MapLibre): pohjakarttana vaalea CARTO Voyager; vaihtoehtoina
+  OSM, MML:n ilmakuva (ilmainen api-avain) ja Esri-satelliittikuva. Väyläviraston
+  viralliset väylät overlay-tasona.
+- **Kuratoitu aloituslista** (~19 paikkaa): Kelventeen poukamat, Pulkkilanharju,
+  Haukkasalo, Judinsalo, Vaarunvuoret ym. + kaksi palvelusatamaa (mm. Kuhmoisten
+  Sahanranta saunalla). Omia paikkoja voi lisätä +-napilla ja siirtää raahaamalla —
+  esim. satelliittikuvasta tai Päijänteen veneilijät -ryhmän vinkeistä bongatut
+  poukamat muistiinpanoineen ja lähdelinkkeineen.
+- **Suosikit**: tähtää paikka ★-napilla; suosikit nousevat listan kärkeen ja
+  saavat oman suodattimen.
+- **Palvelutagit**: sauna, laituri, ankkurointi, nuotiopaikka, WC, uimaranta,
+  telttailu, polku — ikoneina listassa ja kortissa, suodatinchipit yleisimmille.
 - **Suoja-analyysi**: jokaiselle paikalle lasketaan avoin vesimatka (fetch) 24 suuntaan
   oikeasta rantaviivageometriasta (OSM). Ruusukaavio näyttää suojaiset ja alttiit suunnat.
 - **Auringonlasku**: laskusuunta lasketaan päivälle ja paikalle (SunCalc) ja verrataan
