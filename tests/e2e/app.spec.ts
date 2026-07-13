@@ -264,6 +264,29 @@ test('export and import round-trip preserves own spots', async ({ page }) => {
   await expect(page.getByTestId('spot-list').getByText('Vientipaikka')).toBeVisible()
 })
 
+test('markers stay anchored to their geographic position across zooms', async ({ page }) => {
+  await waitForWater(page)
+  const spot = { lon: 25.452, lat: 61.3287 } // Kirkkosalmi = ensimmäinen seed-spotti
+  for (const zoom of [8, 10.8, 13]) {
+    await page.evaluate(
+      ([lon, lat, z]) => (window as any).__map.jumpTo({ center: [lon, lat], zoom: z }),
+      [spot.lon, spot.lat, zoom],
+    )
+    await page.waitForTimeout(250)
+    const projected = await page.evaluate(([lon, lat]) => {
+      const p = (window as any).__map.project([lon, lat])
+      return { x: p.x, y: p.y }
+    }, [spot.lon, spot.lat])
+    const box = await page.locator('.spot-marker').first().boundingBox()
+    expect(box).not.toBeNull()
+    const cx = box!.x + box!.width / 2
+    const cy = box!.y + box!.height / 2
+    // Markerin keskipisteen on oltava kartan projisoimassa pisteessä
+    expect(Math.abs(cx - projected.x)).toBeLessThan(3)
+    expect(Math.abs(cy - projected.y)).toBeLessThan(3)
+  }
+})
+
 test('mobile: sheet snaps between positions via handle taps', async ({ page }) => {
   test.skip(page.viewportSize()!.width > 720, 'vain mobiilissa')
   await expect(page.getByTestId('sheet')).toHaveClass(/pos-half/)

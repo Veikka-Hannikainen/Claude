@@ -355,7 +355,9 @@ details.block > .block-body {
    Elementin laatikko on AINA vain täplän kokoinen: nimilappu ja valinnan
    kasvatus ovat absoluuttisia/transformeja, jotta ankkuripiste ei liiku
    zoomatessa tai valitessa. */
-.spot-marker { width: 20px; height: 20px; position: relative; cursor: pointer; }
+/* HUOM: position PITÄÄ olla absolute — MapLibre asemoi markerin transformilla
+   absoluuttisesti, ja relative rikkoisi asemoinnin (merkit "irtoavat" kartasta) */
+.spot-marker { width: 20px; height: 20px; position: absolute; cursor: pointer; }
 .spot-marker .dot {
   position: absolute; inset: 0; border-radius: 50%;
   background: var(--accent); border: 3px solid #fff;

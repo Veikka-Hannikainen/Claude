@@ -201,6 +201,8 @@ export default function MapView() {
       }
     })
     mapRef.current = map
+    // Testi-/konsolikäyttöön (mm. markerien asemoinnin regressiotesti)
+    ;(window as unknown as { __map?: MlMap }).__map = map
     return () => {
       map.remove()
       mapRef.current = null
