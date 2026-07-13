@@ -52,6 +52,8 @@ export interface SpotComputed {
   fetchKm: number[]
   fairwayDistM: number | null
   nearFairway: boolean | null
+  /** Piste on kaukana Päijänteen rantaviivasta (esim. toinen vesistö) — analyysi ei päde */
+  farFromWater?: boolean
   /** Oliko väyläaineisto käytössä — jos ei, lasketaan uudelleen kun se saapuu */
   withFairways?: boolean
   /** Laskennassa käytetty vesipiste (snapattu jos spotti oli rannalla) */

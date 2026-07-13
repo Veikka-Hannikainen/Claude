@@ -14,9 +14,12 @@ const TILE = Buffer.from(
 )
 
 async function mockNetwork(page: Page) {
-  await page.route(/overpass/, (route) =>
-    route.fulfill({ json: overpassFixture, contentType: 'application/json' }),
-  )
+  await page.route(/overpass/, (route) => {
+    // Sama endpoint palvelee sekä rantaviivan latauksen että rakennustarkistuksen
+    const body = route.request().postData() ?? ''
+    if (body.includes('building')) return route.fulfill({ json: { elements: [] } })
+    return route.fulfill({ json: overpassFixture, contentType: 'application/json' })
+  })
   await page.route(/avoinapi\.vaylapilvi\.fi.*\/collections\?/, (route) =>
     route.fulfill({ json: ogcCollectionsFixture }),
   )
@@ -83,6 +86,9 @@ test('spot card shows day badges, analysis disclosure with rose and fairway dist
   await expect(
     page.getByTestId('feature-chips').locator('.feat-chip', { hasText: 'Nuotiopaikka' }),
   ).toBeVisible()
+  // Rantautumisosio: rakennustarkistus (mockattu: ei rakennuksia) + Karttapaikka-linkki
+  await expect(page.getByTestId('landing').locator('.badge.ok')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('landing').getByText(/Karttapaikasta/)).toBeVisible()
   // Suoja-analyysi aukeaa disclosuresta
   await page.getByTestId('analysis').locator('summary').click()
   await expect(page.locator('.fetch-rose svg path').first()).toBeVisible({ timeout: 20_000 })

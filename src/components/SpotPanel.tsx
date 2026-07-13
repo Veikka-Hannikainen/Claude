@@ -1,6 +1,8 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { computedKey, findSpot, useApp } from '../state/store'
 import { sunsetAzimuthDeg, sunsetOpenness } from '../lib/sun/sunsetOpenness'
+import { checkBuildings } from '../lib/data/buildings'
+import { karttapaikkaUrl } from '../lib/geo/tm35'
 import { t } from '../i18n/fi'
 import FetchRose from './FetchRose'
 import SpotForm from './SpotForm'
@@ -15,15 +17,42 @@ export default function SpotPanel() {
   const waterState = useApp((s) => s.waterState)
   const editingSpotId = useApp((s) => s.editingSpotId)
   const favoriteIds = useApp((s) => s.favoriteIds)
+  const buildingChecks = useApp((s) => s.buildingChecks)
   const spot = findSpot(userSpots, selectedSpotId)
 
-  const comp = spot ? computed[computedKey(spot)] : undefined
+  const rawComp = spot ? computed[computedKey(spot)] : undefined
+  /** Analyysi vain kun piste on oikeasti Päijänteellä */
+  const comp = rawComp && !rawComp.farFromWater ? rawComp : undefined
   const sunset = useMemo(() => {
     if (!spot) return null
     const az = sunsetAzimuthDeg(new Date(), spot.lat, spot.lon)
     return { az, openness: comp ? sunsetOpenness(comp.fetchKm, az) : null }
   }, [spot, comp])
   const shelter = useShelterDays(spot, comp)
+
+  // Yksityisranta-indikaattori: rakennukset lähistöllä (OSM), tulos cacheen
+  const bCheck = spot ? buildingChecks[computedKey(spot)] : undefined
+  const [bLoading, setBLoading] = useState(false)
+  const [bError, setBError] = useState(false)
+  useEffect(() => {
+    if (!spot || bCheck) return
+    let cancelled = false
+    setBLoading(true)
+    setBError(false)
+    const key = computedKey(spot)
+    checkBuildings(spot.lat, spot.lon)
+      .then((c) => {
+        if (!cancelled) useApp.getState().setBuildingCheck(key, c)
+      })
+      .catch(() => {
+        if (!cancelled) setBError(true)
+      })
+      .finally(() => setBLoading(false))
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spot?.id, spot?.lat, spot?.lon, bCheck])
 
   if (!spot) return <SpotList />
   if (editingSpotId === spot.id) return <SpotForm spot={spot} />
@@ -54,6 +83,7 @@ export default function SpotPanel() {
           <span className="badge">{spot.isIsland ? t.spots.island : t.spots.mainland}</span>
           {!spot.seed && <span className="badge">{t.spots.ownBadge}</span>}
           {spot.coordsApproximate && <span className="badge warn">{t.spots.approxBadge}</span>}
+          {rawComp?.farFromWater && <span className="badge warn">{t.spots.farFromWater}</span>}
           {comp?.nearFairway && <span className="badge bad">{t.spots.nearFairway}</span>}
           {sunset?.openness && (
             <span className={`badge ${sunset.openness === 'kyllä' ? 'ok' : sunset.openness === 'osittain' ? 'warn' : ''}`}>
@@ -74,7 +104,7 @@ export default function SpotPanel() {
       </div>
 
       {/* 5 vrk tuulensuoja suoraan kortissa */}
-      {shelter.days ? (
+      {rawComp?.farFromWater ? null : shelter.days ? (
         <DayBadges days={shelter.days} />
       ) : shelter.loading ? (
         <p className="muted small">{t.forecast.loading}</p>
@@ -85,6 +115,30 @@ export default function SpotPanel() {
       ) : (
         <p className="muted small">{t.spots.computing}</p>
       )}
+
+      {/* Rantautuminen: yksityisranta-indikaattori + jokamiehenoikeudet */}
+      <section className="block" data-testid="landing">
+        <h3>{t.spots.landing}</h3>
+        <div className="badges">
+          {bCheck ? (
+            bCheck.distM === null ? (
+              <span className="badge ok">{t.spots.buildingsNone(bCheck.radiusM)}</span>
+            ) : bCheck.distM < 150 ? (
+              <span className="badge bad">{t.spots.buildingsNear(bCheck.distM)}</span>
+            ) : (
+              <span className="badge warn">{t.spots.buildingsSome(bCheck.distM)}</span>
+            )
+          ) : bLoading ? (
+            <span className="badge">{t.spots.buildingsChecking}</span>
+          ) : bError ? (
+            <span className="badge">{t.spots.buildingsError}</span>
+          ) : null}
+        </div>
+        <p className="muted small">{t.spots.everymansRights}</p>
+        <a className="link" href={karttapaikkaUrl(spot.lat, spot.lon)} target="_blank" rel="noreferrer">
+          {t.spots.checkOwnership} ›
+        </a>
+      </section>
 
       {spot.notes && (
         <section className="block">
@@ -126,7 +180,11 @@ export default function SpotPanel() {
             </>
           ) : (
             <p className="muted">
-              {waterState.status === 'ready' ? t.spots.computing : t.spots.needsWater}
+              {rawComp?.farFromWater
+                ? t.spots.farFromWater
+                : waterState.status === 'ready'
+                  ? t.spots.computing
+                  : t.spots.needsWater}
             </p>
           )}
         </div>

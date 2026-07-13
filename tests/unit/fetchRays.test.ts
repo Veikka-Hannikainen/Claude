@@ -50,9 +50,17 @@ describe('computeFetchRays', () => {
 
   it('snaps a point on land to water and still computes', () => {
     // Piste saaren keskellä (maalla)
-    const { fetchKm, snapped } = computeFetchRays(lake, CX, ISLAND_CY)
+    const { fetchKm, snapped, farFromWater } = computeFetchRays(lake, CX, ISLAND_CY)
     expect(snapped).toBeDefined()
+    expect(farFromWater).toBeUndefined()
     expect(Math.max(...fetchKm)).toBeGreaterThan(0)
+  })
+
+  it('flags a point far from the lake instead of snapping it kilometers away', () => {
+    // Piste ~10 km järven eteläpuolella (esim. toinen vesistö)
+    const { fetchKm, farFromWater } = computeFetchRays(lake, CX, CY - LAKE_HALF_DEG - 0.1)
+    expect(farFromWater).toBe(true)
+    expect(Math.max(...fetchKm)).toBe(0)
   })
 
   it('east shore of the island is sheltered from the west', () => {

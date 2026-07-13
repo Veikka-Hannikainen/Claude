@@ -20,7 +20,11 @@ const TILE = Buffer.from(
 )
 
 async function setup(page: Page) {
-  await page.route(/overpass/, (r) => r.fulfill({ json: overpassFixture }))
+  await page.route(/overpass/, (r) => {
+    const body = r.request().postData() ?? ''
+    if (body.includes('building')) return r.fulfill({ json: { elements: [] } })
+    return r.fulfill({ json: overpassFixture })
+  })
   await page.route(/avoinapi\.vaylapilvi\.fi.*\/collections\?/, (r) =>
     r.fulfill({ json: ogcCollectionsFixture }),
   )

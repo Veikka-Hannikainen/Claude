@@ -18,7 +18,12 @@ const CLIP_HALF_KM = FETCH_CAP_KM + 1
 export interface FetchRaysResult {
   fetchKm: number[]
   snapped?: { lat: number; lon: number }
+  /** Piste on yli MAX_SNAP_KM päässä vedestä — tulos ei ole mielekäs */
+  farFromWater?: boolean
 }
+
+/** Suurin sallittu siirto rannalle digitoidusta pisteestä veteen */
+const MAX_SNAP_KM = 1.5
 
 function boundaryLines(water: WaterPolygon): Feature<LineString>[] {
   const out: Feature<LineString>[] = []
@@ -77,9 +82,9 @@ export function snapToWater(
 export function computeFetchRays(water: WaterPolygon, lon: number, lat: number): FetchRaysResult {
   const { clipped, lines } = clipAroundPoint(water, lon, lat)
   const start = snapToWater(clipped, lines, lon, lat)
-  if (!start) {
-    // Piste kaukana vedestä — ei laskettavaa
-    return { fetchKm: new Array(BEARING_COUNT).fill(0) }
+  if (!start || distance(point([lon, lat]), point(start), { units: 'kilometers' }) > MAX_SNAP_KM) {
+    // Piste kaukana vedestä (esim. toinen vesistö) — ei laskettavaa
+    return { fetchKm: new Array(BEARING_COUNT).fill(0), farFromWater: true }
   }
   const origin = point(start)
   const boundary = featureCollection(lines)

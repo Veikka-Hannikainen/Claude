@@ -15,6 +15,7 @@ self.onmessage = (ev: MessageEvent<ComputeRequest>) => {
         fetchKm: rays.fetchKm,
         fairwayDistM: fairway?.distM ?? null,
         nearFairway: fairway?.nearFairway ?? null,
+        farFromWater: rays.farFromWater,
         withFairways: fairwayLines != null,
         snapped: rays.snapped,
         computedAt: Date.now(),

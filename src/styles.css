@@ -351,29 +351,34 @@ details.block > .block-body {
   }
 }
 
-/* ─── Karttamarkerit ──────────────────────────────── */
-.spot-marker { display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+/* ─── Karttamarkerit ──────────────────────────────────
+   Elementin laatikko on AINA vain täplän kokoinen: nimilappu ja valinnan
+   kasvatus ovat absoluuttisia/transformeja, jotta ankkuripiste ei liiku
+   zoomatessa tai valitessa. */
+.spot-marker { width: 20px; height: 20px; position: relative; cursor: pointer; }
 .spot-marker .dot {
-  width: 20px; height: 20px; border-radius: 50%;
+  position: absolute; inset: 0; border-radius: 50%;
   background: var(--accent); border: 3px solid #fff;
-  box-shadow: 0 2px 8px rgba(16, 24, 32, 0.35); position: relative;
+  box-shadow: 0 2px 8px rgba(16, 24, 32, 0.35);
+  transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .spot-marker.own .dot { background: #7c5cff; }
 .spot-marker.selected .dot {
-  width: 26px; height: 26px; background: #0d3ea8;
-  box-shadow: 0 0 0 6px rgba(47, 111, 237, 0.25), 0 2px 8px rgba(16, 24, 32, 0.35);
+  transform: scale(1.35); background: #0d3ea8;
+  box-shadow: 0 0 0 5px rgba(47, 111, 237, 0.25), 0 2px 8px rgba(16, 24, 32, 0.35);
 }
 .spot-marker .fav-dot {
   position: absolute; top: -7px; right: -7px; width: 13px; height: 13px;
   background: #f5a623; border-radius: 50%; border: 2px solid #fff;
-  color: #fff; font-size: 8px; line-height: 9px; text-align: center;
+  color: #fff; font-size: 8px; line-height: 9px; text-align: center; z-index: 1;
 }
 .spot-marker.draggable .dot { outline: 2px dashed var(--accent); outline-offset: 2px; }
 .spot-marker .lbl {
-  display: none;
+  display: none; position: absolute; top: calc(100% + 4px); left: 50%;
+  transform: translateX(-50%); width: max-content; max-width: 130px;
   font-size: 12px; font-weight: 600; color: var(--text);
   text-shadow: 0 1px 0 #fff, 0 -1px 0 #fff, 1px 0 0 #fff, -1px 0 0 #fff, 0 2px 6px #fff;
-  margin-top: 3px; max-width: 130px; text-align: center; line-height: 1.2;
+  text-align: center; line-height: 1.2; pointer-events: none;
 }
 .show-labels .spot-marker .lbl, .spot-marker.selected .lbl { display: block; }
 

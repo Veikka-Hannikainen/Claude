@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { SEED_SPOTS } from '../data/spotsSeed'
+import type { BuildingCheck } from '../lib/data/buildings'
 import {
   DEFAULT_SETTINGS,
   type DatasetState,
@@ -43,7 +44,10 @@ interface AppState {
   settings: Settings
   forecasts: Record<string, WindForecast>
   favoriteIds: string[]
+  /** Rakennukset lähistöllä -tarkistukset (avain = computedKey) */
+  buildingChecks: Record<string, BuildingCheck>
 
+  setBuildingCheck: (key: string, check: BuildingCheck) => void
   toggleFavorite: (id: string) => void
   addSpot: (spot: Spot) => void
   updateSpot: (id: string, patch: Partial<Spot>) => void
@@ -90,7 +94,10 @@ export const useApp = create<AppState>()(
       settings: DEFAULT_SETTINGS,
       forecasts: {},
       favoriteIds: [],
+      buildingChecks: {},
 
+      setBuildingCheck: (key, check) =>
+        set((s) => ({ buildingChecks: { ...s.buildingChecks, [key]: check } })),
       toggleFavorite: (id) =>
         set((s) => ({
           favoriteIds: s.favoriteIds.includes(id)
@@ -164,6 +171,7 @@ export const useApp = create<AppState>()(
         settings: s.settings,
         forecasts: s.forecasts,
         favoriteIds: s.favoriteIds,
+        buildingChecks: s.buildingChecks,
         activeRouteId: s.activeRouteId,
       }),
     },
