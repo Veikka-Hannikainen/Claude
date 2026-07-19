@@ -15,6 +15,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['nuotiopaikka', 'wc', 'uimaranta', 'polku', 'ankkurointi'],
     seed: true,
+    official: true,
     notes:
       'Kelventeen eteläkärjen suojaisa salmi ja hiekkaranta, harjupolun eteläinen lähtöpiste. Nuotiopaikka ja käymälä. Suosittu — sesonkina ruuhkainen.',
     approach: 'Sisääntulo etelästä; hiekkapohja, loivasti syvenevä. Sopii hyvin moottoriveneelle.',
@@ -28,6 +29,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['nuotiopaikka', 'wc', 'uimaranta', 'telttailu', 'polku'],
     seed: true,
+    official: true,
     notes:
       'Kelventeen pohjoiskärjen lahti, pitkä hiekkaranta, nuotiopaikka ja telttailualue kärjen itäpuolella. Harjupolun pohjoinen lähtöpiste.',
     approach: 'Pohjoisesta tullessa loiva hiekkaranta; matalaa lähellä rantaa.',
@@ -41,6 +43,8 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['nuotiopaikka', 'uimaranta', 'telttailu'],
     seed: true,
+    osmName: 'Isohieta',
+    official: true,
     coordsApproximate: true,
     notes:
       'Kelventeen "Riviera" länsirannalla — Päijänteen hienoin hiekkaranta, nuotiopaikka ja hyvät telttapaikat. Länteen avautuva ranta: auringonlasku suoraan edessä.',
@@ -55,6 +59,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['uimaranta', 'ankkurointi'],
     seed: true,
+    osmName: 'Hinttolanhiekka',
     coordsApproximate: true,
     notes: 'Hiekkaranta Kelventeen itärannalla. Suojassa vallitsevilta länsi- ja lounaistuulilta.',
     approach: 'Itäpuolelta; hiekkapohja.',
@@ -68,10 +73,53 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['ankkurointi'],
     seed: true,
+    osmName: 'Karhunkämmen',
     coordsApproximate: true,
     notes:
       'Tuulilta suojainen poukama Kelventeen itäpuolella — sopii myös purjeveneille, eli syvyyttä riittää.',
     approach: 'Sisääntuloaukolla paikoin kivikkoa — aja hitaasti ja tähystä. Perille päästyä erittäin suojainen.',
+    sourceLinks: ['https://www.patikka.net/Melonta/Retkisatamia/Kelvenne-satamat.htm'],
+  },
+  {
+    id: 'seed-kelvenne-kyyranlahti',
+    name: 'Kelvenne · Kyyränlahti',
+    lat: 61.336,
+    lon: 25.448,
+    isIsland: true,
+    features: ['ankkurointi', 'uimaranta'],
+    seed: true,
+    coordsApproximate: true,
+    osmName: 'Kyyränlahti',
+    notes: 'Suojaisa poukama Kelventeen eteläosassa. Rauhallisempi vaihtoehto Kirkkosalmelle.',
+    approach: 'Hiekkapohja; tähystä matalikot lahden suulla.',
+    sourceLinks: ['https://www.patikka.net/Melonta/Retkisatamia/Kelvenne-satamat.htm'],
+  },
+  {
+    id: 'seed-kelvenne-koukunlahti',
+    name: 'Kelvenne · Koukunlahti',
+    lat: 61.352,
+    lon: 25.446,
+    isIsland: true,
+    features: ['ankkurointi'],
+    seed: true,
+    coordsApproximate: true,
+    osmName: 'Koukunlahti',
+    notes:
+      'Tuulilta hyvin suojattu poukama Kelventeen itäpuolella — sopii myös syväyksellisille veneille.',
+    approach: 'Sisääntulossa paikoin kivikkoa — aja hitaasti ja tähystä.',
+    sourceLinks: ['https://www.patikka.net/Melonta/Retkisatamia/Kelvenne-satamat.htm'],
+  },
+  {
+    id: 'seed-kelvenne-nimeton',
+    name: 'Kelvenne · Nimetön',
+    lat: 61.383,
+    lon: 25.437,
+    isIsland: true,
+    features: ['ankkurointi'],
+    seed: true,
+    coordsApproximate: true,
+    notes: 'Pieni nimetön poukama Kelventeen pohjoisosassa. Hiljainen rantautumispaikka.',
+    approach: 'Tähystä; hiekka-/sorapohja.',
     sourceLinks: ['https://www.patikka.net/Melonta/Retkisatamia/Kelvenne-satamat.htm'],
   },
   {
@@ -82,6 +130,8 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['nuotiopaikka', 'uimaranta', 'telttailu'],
     seed: true,
+    osmName: 'Hietasaari',
+    official: true,
     coordsApproximate: true,
     notes:
       'Pieni hiekkasaari n. 3 km Kelventeen pohjoispuolella. Hieno nuotio-, telttailu- ja uimapaikka — usein rauhallisempi kuin Kelvenne.',
@@ -96,6 +146,8 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['nuotiopaikka'],
     seed: true,
+    osmName: 'Haapasaari',
+    official: true,
     coordsApproximate: true,
     notes: 'Kansallispuiston saari, jossa vanha kalamaja. Rauhallinen, vähemmän kävijöitä.',
     approach: 'Rannat osin kivikkoisia — valitse rantautumiskohta huolella.',
@@ -163,6 +215,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['polku', 'uimaranta'],
     seed: true,
+    osmName: 'Päijätsalo',
     coordsApproximate: true,
     notes:
       'Sysmän edustan saari, jonka näkötornista yksi Päijänteen hienoimmista maisemista. Suopellon satama vieressä (palvelut).',
@@ -216,6 +269,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: false,
     features: ['polku'],
     seed: true,
+    osmName: 'Vaarunvuoret',
     coordsApproximate: true,
     notes:
       'Korpilahden Vaarunvuorten jylhät rantakalliot ja luonnonsuojelualue — Pohjois-Päijänteen komeimmat maisemat. Auringonlasku Kärkistenselän ylle.',
@@ -247,6 +301,8 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['laituri', 'nuotiopaikka', 'wc'],
     seed: true,
+    osmName: 'Livansaari',
+    official: true,
     coordsApproximate: true,
     notes:
       'PVY:n virkistysalue n. 1,5 km Kärkistensalmen sillasta kaakkoon. Laituri ja kiinnityspoijut, grillikatos, puuvaja ja käymälä. Sijainti suuntaa-antava — katso lähestymiskartta lähteestä.',
@@ -261,6 +317,8 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['sauna', 'laituri', 'uimaranta', 'nuotiopaikka', 'wc'],
     seed: true,
+    osmName: 'Virtosaari',
+    official: true,
     coordsApproximate: true,
     notes:
       'PVY:n virkistysalue Asikkalassa Kalkkisten sataman lähellä (Kymijoen niska). Vanha sauna, uimalaituri, venelaituri poijuineen, grillikatos ja käymälä. Sijainti suuntaa-antava.',
@@ -275,6 +333,8 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['sauna', 'laituri', 'uimaranta', 'nuotiopaikka', 'wc'],
     seed: true,
+    osmName: 'Vuorissalo',
+    official: true,
     coordsApproximate: true,
     notes:
       'PVY:n virkistysalue Jämsässä. Sauna, uimalaituri, venelaituri, grillikatos, puuvaja ja käymälä. Sijainti suuntaa-antava — katso lähestymiskartta lähteestä ja siirrä merkki.',
@@ -289,6 +349,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['nuotiopaikka', 'wc'],
     seed: true,
+    official: true,
     coordsApproximate: true,
     notes:
       'PVY:n virkistysalue Padasjoella. Sijainti suuntaa-antava — katso lähestymiskartta lähteestä ja siirrä merkki kohdalleen.',
@@ -303,6 +364,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['nuotiopaikka'],
     seed: true,
+    official: true,
     coordsApproximate: true,
     notes:
       'PVY:n virkistysalue Padasjoella. Sijainti suuntaa-antava — katso lähestymiskartta lähteestä ja siirrä merkki kohdalleen.',
@@ -317,6 +379,8 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: false,
     features: ['nuotiopaikka', 'wc', 'uimaranta'],
     seed: true,
+    osmName: 'Vähäniemi',
+    official: true,
     coordsApproximate: true,
     notes:
       'PVY:n virkistysalue Sysmässä. Sijainti suuntaa-antava — katso lähestymiskartta lähteestä ja siirrä merkki kohdalleen.',
@@ -331,6 +395,8 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['nuotiopaikka'],
     seed: true,
+    osmName: 'Vähä-Varaissaari',
+    official: true,
     coordsApproximate: true,
     notes:
       'PVY:n virkistysalue Sysmässä Tehinselän suunnalla. Sijainti suuntaa-antava — katso lähestymiskartta lähteestä ja siirrä merkki kohdalleen.',
@@ -345,6 +411,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['sauna', 'laituri', 'ankkurointi', 'nuotiopaikka', 'wc'],
     seed: true,
+    official: true,
     notes:
       'PVY:n rantautumispaikka Pohjois-Päijänteellä Jyväskylän edustalla — pohjoisen suosituimpia veneilykohteita. Laituri poijuineen, varattava sauna uimalaiturilla (maksu paikan varaustaululta, esim. MobilePay), grillikota, puuvaja ja käymälät.',
     approach: 'Laituri ja kiinnityspoijut; hyvä tulla veneellä.',
@@ -361,6 +428,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: false,
     features: ['laituri', 'ankkurointi', 'nuotiopaikka', 'uimaranta'],
     seed: true,
+    official: true,
     notes:
       'Suosittu virkistys- ja veneilyalue Ristiselän rannalla Toivakassa. Kaksi laituria ja 10 poijupaikkaa pohjoispäässä, 6 poijua eteläpuolella. Kätevästi vesitse Jyväskylästä ja Muuramesta.',
     approach: 'Laiturit alueen pohjoispäässä; poijukiinnitys.',
@@ -374,6 +442,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['ankkurointi'],
     seed: true,
+    osmName: 'Sudensaari',
     coordsApproximate: true,
     notes:
       'Pieni saari keskellä Ristinselkää Muuratsalon eteläpuolella. Suosittu pysähdys pohjoisen veneilijöille.',
@@ -388,6 +457,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['ankkurointi'],
     seed: true,
+    osmName: 'Neihtyensaaret',
     coordsApproximate: true,
     notes:
       'Saariryhmä Mustanselällä Ristinselän eteläpuolella. Sijainti suuntaa-antava — siirrä merkki kohdalleen ilmakuvan päällä.',
@@ -402,6 +472,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: true,
     features: ['ankkurointi'],
     seed: true,
+    osmName: 'Susisaaret',
     coordsApproximate: true,
     notes:
       'Pohjois-Päijänteen saariryhmä. Sijainti epävarma — siirrä merkki kohdalleen ilmakuvan päällä (kopioi tarvittaessa omaksi ja muokkaa).',
@@ -429,6 +500,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: false,
     features: ['laituri', 'wc'],
     seed: true,
+    official: true,
     notes:
       'Palvelusatama, ei luonnonsatama: Korpilahden vierassatama palveluineen (ravintolat, kauppa lähellä). Hyvä huoltopysähdys Pohjois-Päijänteellä.',
     approach: 'Merkitty väylä satamaan; vieraslaituri.',
@@ -442,6 +514,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: false,
     features: ['sauna', 'laituri', 'wc', 'uimaranta'],
     seed: true,
+    official: true,
     coordsApproximate: true,
     notes:
       'Palvelusatama, ei luonnonsatama: useasti Suomen parhaaksi valittu vierassatama. Rantasauna, ravintola ja kahvila — hyvä huolto- ja saunapysähdys retkellä.',
@@ -456,6 +529,7 @@ export const SEED_SPOTS: Spot[] = [
     isIsland: false,
     features: ['laituri', 'wc'],
     seed: true,
+    official: true,
     coordsApproximate: true,
     notes:
       'Palvelusatama, ei luonnonsatama: Padasjoen vierassatama palveluineen. Kätevä huoltopysähdys Kelventeen retkien yhteydessä.',

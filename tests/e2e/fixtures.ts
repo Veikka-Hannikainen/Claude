@@ -56,6 +56,13 @@ export const fairwayLinesFixture = {
 
 export const fairwayAreasFixture = { type: 'FeatureCollection', features: [], links: [] }
 
+/** OSM-nimitarkennuksen vastaus: Sudensaari löytyy "oikeasta" paikasta */
+export const nameRefineFixture = {
+  elements: [
+    { type: 'node', id: 900, lat: 62.0712, lon: 25.7005, tags: { name: 'Sudensaari' } },
+  ],
+}
+
 /** 5 vrk tasainen länsituuli 10 m/s puuskissa 12 m/s */
 export function openMeteoFixture() {
   const time: string[] = []

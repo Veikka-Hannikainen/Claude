@@ -1,5 +1,5 @@
 import type { Feature, FeatureCollection } from 'geojson'
-import type { FairwayAreas, FairwayLines } from '../types'
+import type { DepthContours, FairwayAreas, FairwayLines, SafetyDevices } from '../types'
 
 const BASE = 'https://avoinapi.vaylapilvi.fi/vaylatiedot/ogc/features/v1'
 /** Päijänteen bbox (länsi, etelä, itä, pohjoinen) — Asikkalasta Jyväskylään */
@@ -19,7 +19,12 @@ async function fetchJson(url: string): Promise<any> {
 }
 
 /** Etsi kokoelmatunnisteet nimipäätteillä — API:n tarkka nimeäminen voi elää */
-async function discoverCollections(): Promise<{ lines?: string; areas?: string }> {
+async function discoverCollections(): Promise<{
+  lines?: string
+  areas?: string
+  safety?: string
+  depths?: string
+}> {
   const json = await fetchJson(`${BASE}/collections?f=json`)
   const collections: OgcCollection[] = json.collections ?? []
   const find = (patterns: RegExp[]) =>
@@ -27,13 +32,15 @@ async function discoverCollections(): Promise<{ lines?: string; areas?: string }
   return {
     lines: find([/vaylat_uusi$/i, /^vaylat$/i, /vaylat/i]),
     areas: find([/vaylaalueet_uusi$/i, /vaylaalueet/i]),
+    safety: find([/turvalaitteet_uusi$/i, /turvalait/i]),
+    depths: find([/syvyyskayra/i, /syvyys/i]),
   }
 }
 
-async function fetchAllItems(collectionId: string): Promise<Feature[]> {
+async function fetchAllItems(collectionId: string, maxPages = MAX_PAGES): Promise<Feature[]> {
   const features: Feature[] = []
   let url = `${BASE}/collections/${encodeURIComponent(collectionId)}/items?f=json&bbox=${BBOX}&limit=${PAGE_LIMIT}`
-  for (let page = 0; page < MAX_PAGES && url; page++) {
+  for (let page = 0; page < maxPages && url; page++) {
     const json: FeatureCollection & { links?: { rel: string; href: string }[] } = await fetchJson(url)
     features.push(...(json.features ?? []))
     url = json.links?.find((l) => l.rel === 'next')?.href ?? ''
@@ -57,6 +64,22 @@ function slimProps(f: Feature): Feature {
 export interface Fairways {
   lines: FairwayLines
   areas: FairwayAreas
+  safety: SafetyDevices
+  depths: DepthContours
+}
+
+/** Karsi turvalaite/syvyys-featuret piirtoon riittävään muotoon */
+function slimGeneric(f: Feature): Feature {
+  const p = (f.properties ?? {}) as Record<string, unknown>
+  return {
+    type: 'Feature',
+    geometry: f.geometry,
+    properties: {
+      // Syvyyskäyrän syvyys ja turvalaitteen tyyppi eri nimeämisillä
+      syvyys: p.syvyys ?? p.depth ?? p.arvo ?? null,
+      tyyppi: p.turvalaitetyyppi ?? p.tyyppi ?? p.navl_tyyp ?? p.ty_jnr ?? null,
+    },
+  }
 }
 
 export async function downloadFairways(onProgress?: (msg: string) => void): Promise<Fairways> {
@@ -64,14 +87,19 @@ export async function downloadFairways(onProgress?: (msg: string) => void): Prom
   const ids = await discoverCollections()
   if (!ids.lines && !ids.areas) throw new Error('Väyläkokoelmia ei löytynyt rajapinnasta')
 
-  onProgress?.('Ladataan väyliä…')
-  const [lineFeats, areaFeats] = await Promise.all([
-    ids.lines ? fetchAllItems(ids.lines) : Promise.resolve([]),
-    ids.areas ? fetchAllItems(ids.areas) : Promise.resolve([]),
+  onProgress?.('Ladataan väyliä, turvalaitteita ja syvyyksiä…')
+  const empty: Feature[] = []
+  const [lineFeats, areaFeats, safetyFeats, depthFeats] = await Promise.all([
+    ids.lines ? fetchAllItems(ids.lines) : Promise.resolve(empty),
+    ids.areas ? fetchAllItems(ids.areas) : Promise.resolve(empty),
+    ids.safety ? fetchAllItems(ids.safety).catch(() => empty) : Promise.resolve(empty),
+    // Syvyyskäyriä voi olla paljon — rajataan sivumäärä
+    ids.depths ? fetchAllItems(ids.depths, 15).catch(() => empty) : Promise.resolve(empty),
   ])
   const isLine = (f: Feature) =>
     f.geometry?.type === 'LineString' || f.geometry?.type === 'MultiLineString'
   const isArea = (f: Feature) => f.geometry?.type === 'Polygon' || f.geometry?.type === 'MultiPolygon'
+  const isPoint = (f: Feature) => f.geometry?.type === 'Point' || f.geometry?.type === 'MultiPoint'
   return {
     lines: {
       type: 'FeatureCollection',
@@ -81,5 +109,13 @@ export async function downloadFairways(onProgress?: (msg: string) => void): Prom
       type: 'FeatureCollection',
       features: areaFeats.filter(isArea).map(slimProps),
     } as FairwayAreas,
+    safety: {
+      type: 'FeatureCollection',
+      features: safetyFeats.filter(isPoint).map(slimGeneric),
+    } as SafetyDevices,
+    depths: {
+      type: 'FeatureCollection',
+      features: depthFeats.filter(isLine).map(slimGeneric),
+    } as DepthContours,
   }
 }

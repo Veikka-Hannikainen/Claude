@@ -75,6 +75,16 @@ body {
 .fab:active { transform: scale(0.94); }
 .fab.active { background: var(--bad); box-shadow: 0 6px 20px rgba(208, 59, 59, 0.4); }
 
+.satellite-btn {
+  position: absolute; left: 12px; z-index: 9;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+}
+@media (max-width: 720px) {
+  .satellite-btn { bottom: calc(148px + env(safe-area-inset-bottom)); }
+  .app.sheet-half .satellite-btn { bottom: calc(46dvh + 16px); }
+  .app.sheet-full .satellite-btn { display: none; }
+}
+
 .hint-pill {
   position: absolute; z-index: 6; left: 50%; transform: translateX(-50%);
   background: #111517e6; color: #fff; border-radius: 999px;
@@ -224,6 +234,7 @@ input[type='range'] { padding: 0; accent-color: var(--accent); background: none;
   background: #eaf1fd; color: var(--accent-ink);
   display: flex; align-items: center; justify-content: center;
 }
+.spot-row .ico.official { background: #e2f6e2; color: #0a7d32; }
 .spot-row .mid { flex: 1; min-width: 0; }
 .spot-row .name { font-weight: 600; font-size: 15px; display: block; }
 .spot-row .feats {
@@ -365,6 +376,11 @@ details.block > .block-body {
   transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
 .spot-marker.own .dot { background: #7c5cff; }
+.spot-marker.official .dot { background: #0ca30c; }
+.spot-marker.official.selected .dot {
+  background: #076807;
+  box-shadow: 0 0 0 5px rgba(12, 163, 12, 0.25), 0 2px 8px rgba(16, 24, 32, 0.35);
+}
 .spot-marker.selected .dot {
   transform: scale(1.35); background: #0d3ea8;
   box-shadow: 0 0 0 5px rgba(47, 111, 237, 0.25), 0 2px 8px rgba(16, 24, 32, 0.35);

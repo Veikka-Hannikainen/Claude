@@ -89,7 +89,9 @@ export default function SpotList() {
           return (
             <li key={s.id}>
               <button className="spot-row" onClick={() => app.selectSpot(s.id)}>
-                <span className="ico">{s.isIsland ? '⛰' : '⚓'}</span>
+                <span className={`ico${s.official ? ' official' : ''}`}>
+                  {s.isIsland ? '⛰' : '⚓'}
+                </span>
                 <span className="mid">
                   <span className="name">{s.name}</span>
                   {(s.features?.length || comp?.nearFairway) && (

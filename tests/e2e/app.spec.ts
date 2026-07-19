@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import {
   fairwayAreasFixture,
   fairwayLinesFixture,
+  nameRefineFixture,
   ogcCollectionsFixture,
   openMeteoFixture,
   overpassFixture,
@@ -15,10 +16,13 @@ const TILE = Buffer.from(
 
 async function mockNetwork(page: Page) {
   await page.route(/overpass/, (route) => {
-    // Sama endpoint palvelee sekä rantaviivan latauksen että rakennustarkistuksen
-    const body = route.request().postData() ?? ''
+    // Sama endpoint palvelee rantaviivan, rakennustarkistuksen ja nimitarkennuksen
+    const body = decodeURIComponent((route.request().postData() ?? '').replace(/\+/g, ' '))
     if (body.includes('building')) return route.fulfill({ json: { elements: [] } })
-    return route.fulfill({ json: overpassFixture, contentType: 'application/json' })
+    if (body.includes('out geom'))
+      return route.fulfill({ json: overpassFixture, contentType: 'application/json' })
+    if (body.includes('out center tags')) return route.fulfill({ json: nameRefineFixture })
+    return route.fulfill({ json: { elements: [] } })
   })
   await page.route(/avoinapi\.vaylapilvi\.fi.*\/collections\?/, (route) =>
     route.fulfill({ json: ogcCollectionsFixture }),
@@ -30,7 +34,7 @@ async function mockNetwork(page: Page) {
     route.fulfill({ json: fairwayAreasFixture }),
   )
   await page.route(/api\.open-meteo\.com/, (route) => route.fulfill({ json: openMeteoFixture() }))
-  await page.route(/tile\.openstreetmap\.org|cartocdn\.com/, (route) =>
+  await page.route(/tile\.openstreetmap\.org|cartocdn\.com|arcgisonline\.com|maanmittauslaitos\.fi/, (route) =>
     route.fulfill({ body: TILE, contentType: 'image/png' }),
   )
 }
@@ -86,13 +90,48 @@ test('spot card shows day badges, analysis disclosure with rose and fairway dist
   await expect(
     page.getByTestId('feature-chips').locator('.feat-chip', { hasText: 'Nuotiopaikka' }),
   ).toBeVisible()
-  // Rantautumisosio: rakennustarkistus (mockattu: ei rakennuksia) + Karttapaikka-linkki
-  await expect(page.getByTestId('landing').locator('.badge.ok')).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByTestId('landing').getByText(/Karttapaikasta/)).toBeVisible()
   // Suoja-analyysi aukeaa disclosuresta
   await page.getByTestId('analysis').locator('summary').click()
   await expect(page.locator('.fetch-rose svg path').first()).toBeVisible({ timeout: 20_000 })
   await expect(page.getByText(/Etäisyys väylään/)).toBeVisible()
+})
+
+test('natural harbor shows building check and Karttapaikka link, official spot does not', async ({
+  page,
+}) => {
+  await waitForWater(page)
+  // Karhunkämmen on luonnonsatama → rakennustarkistus + jokamiehenoikeudet
+  await page.getByTestId('spot-list').getByText('Karhunkämmen', { exact: false }).click()
+  await expect(page.getByTestId('landing').locator('.badge.ok')).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('landing').getByText(/Karttapaikasta/)).toBeVisible()
+  // Kirkkosalmi on virallinen kohde → vihreä merkintä, ei rakennustarkistusta
+  await page.getByTestId('spot-panel').getByText('‹').click()
+  await page.getByTestId('spot-list').getByText('Kelvenne · Kirkkosalmi').click()
+  await expect(page.locator('.badge', { hasText: 'Virallinen kohde' })).toBeVisible()
+  await expect(page.getByTestId('landing')).toHaveCount(0)
+  await expect(page.locator('.spot-marker.official').first()).toBeAttached()
+})
+
+test('seed coordinates refine from OSM place names', async ({ page }) => {
+  await page.waitForFunction(
+    () => !!window.__appStore?.getState().seedCoordOverrides?.['seed-sudensaari'],
+    undefined,
+    { timeout: 15_000 },
+  )
+  const o = await page.evaluate(
+    () => window.__appStore.getState().seedCoordOverrides['seed-sudensaari'],
+  )
+  expect(o.lat).toBeCloseTo(62.0712, 3)
+  expect(o.lon).toBeCloseTo(25.7005, 3)
+})
+
+test('satellite toggle switches basemap and back', async ({ page }) => {
+  await page.getByTestId('satellite-toggle').click()
+  await page.waitForFunction(() =>
+    ['esri', 'mml'].includes(window.__appStore.getState().settings.basemap),
+  )
+  await page.getByTestId('satellite-toggle').click()
+  await page.waitForFunction(() => window.__appStore.getState().settings.basemap === 'kartta')
 })
 
 test('spot next to a fairway gets the nearFairway warning', async ({ page }) => {

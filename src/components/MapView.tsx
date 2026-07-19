@@ -2,8 +2,7 @@ import maplibregl, { Map as MlMap, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 import type { FeatureCollection } from 'geojson'
-import { useApp } from '../state/store'
-import { SEED_SPOTS } from '../data/spotsSeed'
+import { seedSpotsWithOverrides, useApp } from '../state/store'
 import { checkLegs, buildShoreIndex } from '../lib/geo/landCrossing'
 import { routeMetrics } from '../lib/route/metrics'
 import type { Settings, Spot, WaterPolygon } from '../lib/types'
@@ -72,8 +71,26 @@ function addOverlays(map: MlMap) {
   const ensureSource = (id: string) => {
     if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY_FC })
   }
-  for (const id of ['water-render', 'fairway-areas', 'fairway-lines', 'route-legs']) ensureSource(id)
+  for (const id of [
+    'water-render',
+    'depth-contours',
+    'fairway-areas',
+    'fairway-lines',
+    'safety-devices',
+    'route-legs',
+  ])
+    ensureSource(id)
 
+  // Syvyyskäyrät hillittyinä sinisinä viivoina pohjimmaiseksi
+  if (!map.getLayer('depth-contours-line')) {
+    map.addLayer({
+      id: 'depth-contours-line',
+      type: 'line',
+      source: 'depth-contours',
+      minzoom: 10,
+      paint: { 'line-color': '#7fa8d9', 'line-width': 0.8, 'line-opacity': 0.5 },
+    })
+  }
   if (!map.getLayer('water-outline')) {
     map.addLayer({
       id: 'water-outline',
@@ -100,6 +117,21 @@ function addOverlays(map: MlMap) {
         'line-width': 1.2,
         'line-opacity': 0.55,
         'line-dasharray': [3, 2],
+      },
+    })
+  }
+  // Turvalaitteet (poijut, viitat) pieninä täplinä zoomilta 10.5
+  if (!map.getLayer('safety-devices-dot')) {
+    map.addLayer({
+      id: 'safety-devices-dot',
+      type: 'circle',
+      source: 'safety-devices',
+      minzoom: 10.5,
+      paint: {
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 10.5, 2, 14, 4.5],
+        'circle-color': '#c9860b',
+        'circle-stroke-color': '#ffffff',
+        'circle-stroke-width': 1,
       },
     })
   }
@@ -144,7 +176,7 @@ function spotMarkerEl(spot: Spot): HTMLDivElement {
 }
 
 function markerClass(spot: Spot, selected: boolean, favorite: boolean, draggable: boolean): string {
-  return `spot-marker${spot.seed ? ' seed' : ' own'}${selected ? ' selected' : ''}${draggable ? ' draggable' : ''}${favorite ? ' fav' : ''}`
+  return `spot-marker${spot.seed ? ' seed' : ' own'}${spot.official ? ' official' : ''}${selected ? ' selected' : ''}${draggable ? ' draggable' : ''}${favorite ? ' fav' : ''}`
 }
 
 export default function MapView() {
@@ -227,6 +259,8 @@ export default function MapView() {
   const activeRouteId = useApp((s) => s.activeRouteId)
   const waterCompute = useApp((s) => s.waterCompute)
   const showWaterOutline = useApp((s) => s.settings.showWaterOutline)
+  const safetyDevices = useApp((s) => s.safetyDevices)
+  const depthContours = useApp((s) => s.depthContours)
 
   function syncOverlayData(map: MlMap) {
     const st = useApp.getState()
@@ -235,8 +269,10 @@ export default function MapView() {
       if (src) src.setData((data ?? EMPTY_FC) as GeoJSON.GeoJSON)
     }
     setData('water-render', st.waterRender)
+    setData('depth-contours', st.depthContours)
     setData('fairway-lines', st.fairwayLines)
     setData('fairway-areas', st.fairwayAreas)
+    setData('safety-devices', st.safetyDevices)
     setData('route-legs', routeLegsFc())
     if (map.getLayer('water-outline')) {
       map.setLayoutProperty(
@@ -280,17 +316,26 @@ export default function MapView() {
     if (!map || !map.isStyleLoaded()) return
     syncOverlayData(map)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waterRender, fairwayLines, fairwayAreas, routes, activeRouteId, waterCompute, showWaterOutline])
+  }, [waterRender, fairwayLines, fairwayAreas, safetyDevices, depthContours, routes, activeRouteId, waterCompute, showWaterOutline])
+
+  // Kertaluonteinen lento kohteeseen (esim. "Näytä ilmakuvassa")
+  const flyTarget = useApp((s) => s.flyTarget)
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map || !flyTarget) return
+    map.flyTo({ center: [flyTarget.lon, flyTarget.lat], zoom: flyTarget.zoom, duration: 1200 })
+  }, [flyTarget])
 
   // Spottimarkerit
   const userSpots = useApp((s) => s.userSpots)
   const selectedSpotId = useApp((s) => s.selectedSpotId)
   const editingSpotId = useApp((s) => s.editingSpotId)
   const favoriteIds = useApp((s) => s.favoriteIds)
+  const seedCoordOverrides = useApp((s) => s.seedCoordOverrides)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
-    const all = [...SEED_SPOTS, ...userSpots]
+    const all = [...seedSpotsWithOverrides(seedCoordOverrides), ...userSpots]
     const seen = new Set<string>()
     for (const spot of all) {
       seen.add(spot.id)
@@ -329,7 +374,7 @@ export default function MapView() {
         spotMarkers.current.delete(id)
       }
     }
-  }, [userSpots, selectedSpotId, editingSpotId, favoriteIds])
+  }, [userSpots, selectedSpotId, editingSpotId, favoriteIds, seedCoordOverrides])
 
   // Reittipisteet + kumulatiiviset aikapillerit (aktiivinen reitti)
   const mode = useApp((s) => s.mode)

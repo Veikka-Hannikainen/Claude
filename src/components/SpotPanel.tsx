@@ -35,7 +35,8 @@ export default function SpotPanel() {
   const [bLoading, setBLoading] = useState(false)
   const [bError, setBError] = useState(false)
   useEffect(() => {
-    if (!spot || bCheck) return
+    // Rakennustarkistus vain luonnonsatamiin — viralliset kohteet ovat julkisia
+    if (!spot || spot.official || bCheck) return
     let cancelled = false
     setBLoading(true)
     setBError(false)
@@ -81,6 +82,7 @@ export default function SpotPanel() {
         <h1>{spot.name}</h1>
         <div className="badges">
           <span className="badge">{spot.isIsland ? t.spots.island : t.spots.mainland}</span>
+          {spot.official && <span className="badge ok">{t.spots.officialBadge}</span>}
           {!spot.seed && <span className="badge">{t.spots.ownBadge}</span>}
           {spot.coordsApproximate && <span className="badge warn">{t.spots.approxBadge}</span>}
           {rawComp?.farFromWater && <span className="badge warn">{t.spots.farFromWater}</span>}
@@ -116,7 +118,8 @@ export default function SpotPanel() {
         <p className="muted small">{t.spots.computing}</p>
       )}
 
-      {/* Rantautuminen: yksityisranta-indikaattori + jokamiehenoikeudet */}
+      {/* Rantautuminen: yksityisranta-indikaattori + jokamiehenoikeudet (vain luonnonsatamat) */}
+      {!spot.official && (
       <section className="block" data-testid="landing">
         <h3>{t.spots.landing}</h3>
         <div className="badges">
@@ -139,6 +142,21 @@ export default function SpotPanel() {
           {t.spots.checkOwnership} ›
         </a>
       </section>
+      )}
+
+      <div className="btn-row">
+        <button
+          data-testid="show-aerial"
+          onClick={() => {
+            const st = useApp.getState()
+            st.flyTo(spot.lon, spot.lat, 16)
+            st.setSettings({ basemap: st.settings.mmlApiKey ? 'mml' : 'esri' })
+            st.setSheetPos('peek')
+          }}
+        >
+          🛰 {t.spots.showAerial}
+        </button>
+      </div>
 
       {spot.notes && (
         <section className="block">

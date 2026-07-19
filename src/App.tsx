@@ -6,9 +6,10 @@ import SpotPanel from './components/SpotPanel'
 import RoutePanel from './components/RoutePanel'
 import SettingsDialog from './components/SettingsDialog'
 import DataBanner from './components/DataBanner'
-import { computedKey, useApp } from './state/store'
+import { computedKey, seedSpotsWithOverrides, useApp } from './state/store'
 import { SEED_SPOTS } from './data/spotsSeed'
 import { downloadMissing, loadFromDb } from './lib/data/bootstrap'
+import { refineSeedCoords } from './lib/data/refineSeeds'
 import { computeSpots } from './lib/compute/computeClient'
 import { t } from './i18n/fi'
 
@@ -27,11 +28,27 @@ export default function App() {
   const view = useApp((s) => s.view)
   const mode = useApp((s) => s.mode)
   const sheetPos = useApp((s) => s.sheetPos)
+  const basemap = useApp((s) => s.settings.basemap)
+  const satellite = basemap === 'mml' || basemap === 'esri'
   const [showSettings, setShowSettings] = useState(false)
   const inflight = useRef(new Set<string>())
 
   useEffect(() => {
     void bootstrap()
+  }, [])
+
+  // Tarkenna likimääräiset seed-sijainnit OSM-paikannimillä (kerran per selain)
+  const refineTried = useRef(false)
+  useEffect(() => {
+    if (refineTried.current) return
+    const pending = SEED_SPOTS.filter(
+      (s) => s.osmName && !useApp.getState().seedCoordOverrides[s.id],
+    )
+    if (pending.length === 0) return
+    refineTried.current = true
+    void refineSeedCoords(pending).then((o) => {
+      if (Object.keys(o).length > 0) useApp.getState().addSeedCoordOverrides(o)
+    })
   }, [])
 
   // Laske suoja-analyysi spoteille, joilta tulos puuttuu (tai väylädata saapui myöhemmin)
@@ -40,9 +57,10 @@ export default function App() {
   const fairwayAreas = useApp((s) => s.fairwayAreas)
   const userSpots = useApp((s) => s.userSpots)
   const computed = useApp((s) => s.computed)
+  const seedCoordOverrides = useApp((s) => s.seedCoordOverrides)
   useEffect(() => {
     if (!waterCompute) return
-    const all = [...SEED_SPOTS, ...userSpots]
+    const all = [...seedSpotsWithOverrides(seedCoordOverrides), ...userSpots]
     const needed = all.filter((sp) => {
       const key = computedKey(sp)
       if (inflight.current.has(key)) return false
@@ -64,7 +82,7 @@ export default function App() {
     ).then(() => {
       needed.forEach((sp) => inflight.current.delete(computedKey(sp)))
     })
-  }, [waterCompute, fairwayLines, fairwayAreas, userSpots, computed])
+  }, [waterCompute, fairwayLines, fairwayAreas, userSpots, computed, seedCoordOverrides])
 
   return (
     <div className={`app sheet-${sheetPos}`}>
@@ -105,6 +123,17 @@ export default function App() {
         }}
       >
         {mode === 'add-spot' ? '×' : '+'}
+      </button>
+      <button
+        className="chip satellite-btn"
+        data-testid="satellite-toggle"
+        onClick={() => {
+          const st = useApp.getState()
+          if (satellite) st.setSettings({ basemap: 'kartta' })
+          else st.setSettings({ basemap: st.settings.mmlApiKey ? 'mml' : 'esri' })
+        }}
+      >
+        {satellite ? `🗺 ${t.map.map}` : `🛰 ${t.map.aerial}`}
       </button>
       {mode === 'add-spot' && (
         <div className="hint-pill" style={{ bottom: 'calc(50% - 20px)' }}>

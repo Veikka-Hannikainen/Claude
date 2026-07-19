@@ -36,8 +36,12 @@ export interface Spot {
   photoLinks?: string[]
   /** Kuratoitu aloituslistan paikka (ei muokattavissa) */
   seed?: boolean
+  /** Virallinen/huollettu kohde (vierassatama, PVY, kansallispuisto) — vihreä merkki */
+  official?: boolean
   /** Koordinaatti karkea — tarkenna satelliittikuvasta raahaamalla */
   coordsApproximate?: boolean
+  /** OSM-paikannimi, jolla likimääräinen sijainti tarkennetaan automaattisesti */
+  osmName?: string
 }
 
 /** 24 suuntimaa 15° välein, indeksi 0 = pohjoinen */
@@ -111,6 +115,10 @@ export interface WindForecast {
 export type WaterPolygon = Feature<Polygon | MultiPolygon>
 export type FairwayLines = FeatureCollection<LineString>
 export type FairwayAreas = FeatureCollection<Polygon | MultiPolygon>
+/** Turvalaitteet (poijut, viitat, merkit) pisteinä */
+export type SafetyDevices = FeatureCollection
+/** Syvyyskäyrät viivoina */
+export type DepthContours = FeatureCollection
 
 export type DatasetState =
   | { status: 'missing' }

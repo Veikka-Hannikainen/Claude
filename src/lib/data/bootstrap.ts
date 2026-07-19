@@ -1,28 +1,42 @@
 import { dataDb } from './db'
 import { downloadPaijanneWater } from './overpass'
 import { downloadFairways } from './vaylatiedot'
-import type { DatasetState, FairwayAreas, FairwayLines, WaterPolygon } from '../types'
+import type {
+  DatasetState,
+  DepthContours,
+  FairwayAreas,
+  FairwayLines,
+  SafetyDevices,
+  WaterPolygon,
+} from '../types'
 
 export interface LoadedData {
   waterCompute: WaterPolygon | null
   waterRender: WaterPolygon | null
   fairwayLines: FairwayLines | null
   fairwayAreas: FairwayAreas | null
+  safetyDevices: SafetyDevices | null
+  depthContours: DepthContours | null
 }
 
 /** Lue aineistot IndexedDB:stä (ladattu aiemmin tässä selaimessa) */
 export async function loadFromDb(): Promise<LoadedData> {
-  const [waterCompute, waterRender, fairwayLines, fairwayAreas] = await Promise.all([
-    dataDb.getWaterCompute(),
-    dataDb.getWaterRender(),
-    dataDb.getFairwayLines(),
-    dataDb.getFairwayAreas(),
-  ])
+  const [waterCompute, waterRender, fairwayLines, fairwayAreas, safetyDevices, depthContours] =
+    await Promise.all([
+      dataDb.getWaterCompute(),
+      dataDb.getWaterRender(),
+      dataDb.getFairwayLines(),
+      dataDb.getFairwayAreas(),
+      dataDb.getSafetyDevices(),
+      dataDb.getDepthContours(),
+    ])
   return {
     waterCompute: waterCompute ?? null,
     waterRender: waterRender ?? null,
     fairwayLines: fairwayLines ?? null,
     fairwayAreas: fairwayAreas ?? null,
+    safetyDevices: safetyDevices ?? null,
+    depthContours: depthContours ?? null,
   }
 }
 
@@ -50,13 +64,21 @@ async function staticWater(): Promise<{ compute: WaterPolygon; render: WaterPoly
   return { compute, render }
 }
 
-async function staticFairways(): Promise<{ lines: FairwayLines; areas: FairwayAreas } | null> {
+const EMPTY_FC = { type: 'FeatureCollection', features: [] } as SafetyDevices
+
+async function staticFairways(): Promise<{
+  lines: FairwayLines
+  areas: FairwayAreas
+  safety: SafetyDevices
+  depths: DepthContours
+} | null> {
   const lines = await tryStatic<FairwayLines>('data/fairway-lines.geojson')
   if (!lines) return null
   const areas =
-    (await tryStatic<FairwayAreas>('data/fairway-areas.geojson')) ??
-    ({ type: 'FeatureCollection', features: [] } as FairwayAreas)
-  return { lines, areas }
+    (await tryStatic<FairwayAreas>('data/fairway-areas.geojson')) ?? (EMPTY_FC as FairwayAreas)
+  const safety = (await tryStatic<SafetyDevices>('data/safety-devices.geojson')) ?? EMPTY_FC
+  const depths = (await tryStatic<DepthContours>('data/depth-contours.geojson')) ?? EMPTY_FC
+  return { lines, areas, safety, depths }
 }
 
 /** Lataa puuttuvat aineistot (esiladattu tiedosto tai verkko) ja tallenna selaimeen */
@@ -86,7 +108,8 @@ export async function downloadMissing(current: LoadedData, cb: BootstrapCallback
     cb.onWaterState({ status: 'ready', updatedAt: 0 })
   }
 
-  if (!current.fairwayLines) {
+  // safetyDevices puuttuu myös vanhoilta asennuksilta → haetaan paketti uudelleen
+  if (!current.fairwayLines || !current.safetyDevices) {
     cb.onFairwayState({ status: 'downloading' })
     jobs.push(
       staticFairways()
@@ -95,10 +118,15 @@ export async function downloadMissing(current: LoadedData, cb: BootstrapCallback
             found ??
             downloadFairways((msg) => cb.onFairwayState({ status: 'downloading', progress: msg })),
         )
-        .then(async ({ lines, areas }) => {
-          await dataDb.setFairways(lines, areas)
+        .then(async ({ lines, areas, safety, depths }) => {
+          await dataDb.setFairways(lines, areas, safety, depths)
           await dataDb.setMeta({ fairwaysUpdatedAt: Date.now() })
-          cb.onData({ fairwayLines: lines, fairwayAreas: areas })
+          cb.onData({
+            fairwayLines: lines,
+            fairwayAreas: areas,
+            safetyDevices: safety,
+            depthContours: depths,
+          })
           cb.onFairwayState({ status: 'ready', updatedAt: Date.now() })
         })
         .catch((err) => {

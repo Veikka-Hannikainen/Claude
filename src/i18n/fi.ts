@@ -14,6 +14,10 @@ export const t = {
     telttailu: 'Telttailu',
     polku: 'Polku',
   } satisfies Record<FeatureTag, string>,
+  map: {
+    aerial: 'Ilmakuva',
+    map: 'Kartta',
+  },
   spots: {
     listTitle: 'Luonnonsatamat',
     addSpot: 'Lisää paikka',
@@ -25,6 +29,8 @@ export const t = {
     mainland: 'Manner',
     seedBadge: 'Kuratoitu',
     ownBadge: 'Oma',
+    officialBadge: 'Virallinen kohde',
+    showAerial: 'Näytä ilmakuvassa',
     approxBadge: 'Sijainti likimääräinen',
     nearFairway: 'Väylä lähellä',
     fairwayDist: 'Etäisyys väylään',
