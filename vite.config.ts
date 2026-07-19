@@ -29,7 +29,7 @@ export default defineConfig({
           {
             // Karttatiilet: kotona selatut alueet toimivat veneessä ilman verkkoa
             urlPattern: ({ url }) =>
-              /tile\.openstreetmap\.org|avoin-karttakuva\.maanmittauslaitos\.fi|arcgisonline\.com|cartocdn\.com/.test(
+              /tile\.openstreetmap\.org|avoin-karttakuva\.maanmittauslaitos\.fi|arcgisonline\.com|cartocdn\.com|julkinen\.traficom\.fi/.test(
                 url.host,
               ),
             handler: 'CacheFirst',

@@ -193,6 +193,14 @@ export const useApp = create<AppState>()(
     }),
     {
       name: 'paijanne-v1',
+      version: 2,
+      migrate: (persisted: unknown) => {
+        // v2: merikartta uudeksi oletuspohjaksi käyttäjille, jotka eivät ole
+        // itse vaihtaneet pohjaa (vanha oletus oli 'kartta')
+        const state = persisted as { settings?: { basemap?: string } } | undefined
+        if (state?.settings?.basemap === 'kartta') state.settings.basemap = 'merikartta'
+        return state
+      },
       partialize: (s) => ({
         userSpots: s.userSpots,
         computed: s.computed,

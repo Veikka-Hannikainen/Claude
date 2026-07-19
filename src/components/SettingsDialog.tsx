@@ -50,6 +50,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             value={settings.basemap}
             onChange={(e) => app.setSettings({ basemap: e.target.value as typeof settings.basemap })}
           >
+            <option value="merikartta">{t.settings.basemaps.merikartta}</option>
             <option value="kartta">{t.settings.basemaps.kartta}</option>
             <option value="osm">{t.settings.basemaps.osm}</option>
             <option value="mml">{t.settings.basemaps.mml}</option>

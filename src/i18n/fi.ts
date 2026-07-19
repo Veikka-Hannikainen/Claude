@@ -120,6 +120,7 @@ export const t = {
     mmlKeyHint: 'Hae ilmainen avain: omatili.maanmittauslaitos.fi — avaimella saat parhaan ilmakuvan.',
     basemap: 'Pohjakartta',
     basemaps: {
+      merikartta: 'Merikartta (syvyydet)',
       kartta: 'Kartta',
       osm: 'Kartta (OSM)',
       mml: 'Ilmakuva (MML)',

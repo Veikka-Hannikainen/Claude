@@ -127,7 +127,7 @@ export default function App() {
         data-testid="satellite-toggle"
         onClick={() => {
           const st = useApp.getState()
-          if (satellite) st.setSettings({ basemap: 'kartta' })
+          if (satellite) st.setSettings({ basemap: 'merikartta' })
           else st.setSettings({ basemap: st.settings.mmlApiKey ? 'mml' : 'esri' })
         }}
       >

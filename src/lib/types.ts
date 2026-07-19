@@ -78,7 +78,7 @@ export interface Route {
   waypoints: Waypoint[]
 }
 
-export type BasemapId = 'kartta' | 'osm' | 'mml' | 'esri'
+export type BasemapId = 'merikartta' | 'kartta' | 'osm' | 'mml' | 'esri'
 
 export interface Settings {
   cruiseKn: number
@@ -96,7 +96,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fuelLph: 22,
   fuelPriceEur: 2.2,
   mmlApiKey: '',
-  basemap: 'kartta',
+  basemap: 'merikartta',
   showWaterOutline: false,
   warnNearFairway: false,
 }

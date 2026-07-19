@@ -134,7 +134,7 @@ test('satellite toggle switches basemap and back', async ({ page }) => {
     ['esri', 'mml'].includes(window.__appStore.getState().settings.basemap),
   )
   await page.getByTestId('satellite-toggle').click()
-  await page.waitForFunction(() => window.__appStore.getState().settings.basemap === 'kartta')
+  await page.waitForFunction(() => window.__appStore.getState().settings.basemap === 'merikartta')
 })
 
 test('fairway proximity warning is opt-in via settings', async ({ page }) => {

@@ -37,6 +37,15 @@ function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
       attribution: '© Esri, Maxar, Earthstar Geographics',
     }
     layerSource = 'esri'
+  } else if (settings.basemap === 'kartta') {
+    sources.kartta = {
+      type: 'raster',
+      tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: '© OpenStreetMap © CARTO',
+    }
+    layerSource = 'kartta'
   } else if (settings.basemap === 'osm') {
     sources.osm = {
       type: 'raster',
@@ -47,13 +56,18 @@ function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
     }
     layerSource = 'osm'
   } else {
-    sources.kartta = {
+    // Oletus: Traficomin avoin rasterimerikartta (sarja J = Päijänne) — syvyydet,
+    // väylät ja merkinnät. Ei navigointikäyttöön.
+    sources.merikartta = {
       type: 'raster',
-      tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
+      tiles: [
+        'https://julkinen.traficom.fi/rasteripalvelu/wmts?request=GetTile&version=1.0.0&service=wmts&layer=Traficom:Merikarttasarja%20J%20public&TILEMATRIXSET=WGS84_Pseudo-Mercator&TileMatrix=WGS84_Pseudo-Mercator:{z}&tilerow={y}&tilecol={x}&format=image/png&style=default',
+      ],
       tileSize: 256,
-      maxzoom: 19,
-      attribution: '© OpenStreetMap © CARTO',
+      maxzoom: 15,
+      attribution: '© Traficom (CC BY 4.0) — ei navigointikäyttöön',
     }
+    layerSource = 'merikartta'
   }
   return {
     version: 8,
