@@ -2,12 +2,23 @@
 import { computeFetchRays } from '../geo/fetchRays'
 import { fairwayDistance } from '../geo/fairwayDistance'
 import type { ComputeRequest, ComputeResponse } from './protocol'
-import type { SpotComputed } from '../types'
+import type { FairwayAreas, FairwayLines, SpotComputed, WaterPolygon } from '../types'
+
+let water: WaterPolygon | null = null
+let fairwayLines: FairwayLines | null = null
+let fairwayAreas: FairwayAreas | null = null
 
 self.onmessage = (ev: MessageEvent<ComputeRequest>) => {
-  const { water, fairwayLines, fairwayAreas, spots } = ev.data
-  for (const spot of spots) {
+  const msg = ev.data
+  if (msg.type === 'init') {
+    water = msg.water
+    fairwayLines = msg.fairwayLines
+    fairwayAreas = msg.fairwayAreas
+    return
+  }
+  for (const spot of msg.spots) {
     try {
+      if (!water) throw new Error('Ei vesiaineistoa')
       const rays = computeFetchRays(water, spot.lon, spot.lat)
       const target = rays.snapped ?? { lon: spot.lon, lat: spot.lat }
       const fairway = fairwayDistance(fairwayLines, fairwayAreas, target.lon, target.lat)
@@ -20,15 +31,15 @@ self.onmessage = (ev: MessageEvent<ComputeRequest>) => {
         snapped: rays.snapped,
         computedAt: Date.now(),
       }
-      const msg: ComputeResponse = { type: 'result', spotId: spot.id, computed }
-      self.postMessage(msg)
+      const out: ComputeResponse = { type: 'result', spotId: spot.id, computed }
+      self.postMessage(out)
     } catch (err) {
-      const msg: ComputeResponse = {
+      const out: ComputeResponse = {
         type: 'error',
         spotId: spot.id,
         message: err instanceof Error ? err.message : 'Laskenta epäonnistui',
       }
-      self.postMessage(msg)
+      self.postMessage(out)
     }
   }
   self.postMessage({ type: 'done' } satisfies ComputeResponse)

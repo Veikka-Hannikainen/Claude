@@ -17,7 +17,7 @@ import {
   type WindForecast,
 } from '../lib/types'
 
-export type Mode = 'browse' | 'add-spot' | 'edit-route'
+export type Mode = 'browse' | 'edit-route'
 /** Sheetin näkymä: lista → paikkakortti → reittieditori */
 export type View = 'list' | 'spot' | 'route'
 export type SheetPos = 'peek' | 'half' | 'full'

@@ -2,10 +2,11 @@ import maplibregl, { Map as MlMap, Marker } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 import type { FeatureCollection } from 'geojson'
-import { seedSpotsWithOverrides, useApp } from '../state/store'
-import { checkLegs, buildShoreIndex } from '../lib/geo/landCrossing'
+import { computedKey, seedSpotsWithOverrides, useApp } from '../state/store'
+import { checkLegs } from '../lib/geo/landCrossing'
+import { getShoreIndex } from '../lib/geo/shoreCache'
 import { routeMetrics } from '../lib/route/metrics'
-import type { Settings, Spot, WaterPolygon } from '../lib/types'
+import type { Settings, Spot } from '../lib/types'
 
 const PAIJANNE_CENTER: [number, number] = [25.45, 61.6]
 /** Zoom-taso jolta alkaen paikkojen nimet näytetään */
@@ -184,8 +185,7 @@ export default function MapView() {
   const mapRef = useRef<MlMap | null>(null)
   const spotMarkers = useRef(new Map<string, Marker>())
   const wpMarkers = useRef<Marker[]>([])
-  const shoreRef = useRef<ReturnType<typeof buildShoreIndex> | null>(null)
-  const waterForShoreRef = useRef<WaterPolygon | null>(null)
+  const suppressNextClick = useRef(false)
 
   // Init
   useEffect(() => {
@@ -208,20 +208,12 @@ export default function MapView() {
       containerRef.current?.classList.toggle('show-labels', map.getZoom() >= LABEL_ZOOM)
     })
     map.on('click', (e) => {
+      if (suppressNextClick.current) {
+        suppressNextClick.current = false
+        return
+      }
       const { mode, activeRouteId } = useApp.getState()
-      if (mode === 'add-spot') {
-        const id = `own-${Date.now()}`
-        useApp.getState().addSpot({
-          id,
-          name: 'Uusi paikka',
-          lat: e.lngLat.lat,
-          lon: e.lngLat.lng,
-          isIsland: true,
-        })
-        useApp.getState().selectSpot(id)
-        useApp.getState().setEditingSpot(id)
-        useApp.getState().setMode('browse')
-      } else if (mode === 'edit-route' && activeRouteId) {
+      if (mode === 'edit-route' && activeRouteId) {
         const route = useApp.getState().routes.find((r) => r.id === activeRouteId)
         if (route) {
           useApp.getState().updateRoute(activeRouteId, {
@@ -232,6 +224,40 @@ export default function MapView() {
         useApp.getState().selectSpot(null)
       }
     })
+
+    // Pitkä painallus kartalla lisää oman paikan (iOS/Orca-tapa)
+    const canvasEl = map.getCanvasContainer()
+    let lpTimer: number | null = null
+    let lpStart: { x: number; y: number } | null = null
+    const cancelLongPress = () => {
+      if (lpTimer !== null) clearTimeout(lpTimer)
+      lpTimer = null
+      lpStart = null
+    }
+    canvasEl.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return
+      lpStart = { x: e.clientX, y: e.clientY }
+      lpTimer = window.setTimeout(() => {
+        lpTimer = null
+        if (!lpStart) return
+        const rect = canvasEl.getBoundingClientRect()
+        const lngLat = map.unproject([lpStart.x - rect.left, lpStart.y - rect.top])
+        lpStart = null
+        suppressNextClick.current = true
+        const id = `own-${Date.now()}`
+        const st = useApp.getState()
+        st.addSpot({ id, name: 'Uusi paikka', lat: lngLat.lat, lon: lngLat.lng, isIsland: true })
+        st.selectSpot(id)
+        st.setEditingSpot(id)
+      }, 550)
+    })
+    canvasEl.addEventListener('pointermove', (e: PointerEvent) => {
+      if (lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) cancelLongPress()
+    })
+    canvasEl.addEventListener('pointerup', cancelLongPress)
+    canvasEl.addEventListener('pointercancel', cancelLongPress)
+    map.on('move', cancelLongPress)
+    map.on('zoom', cancelLongPress)
     mapRef.current = map
     // Testi-/konsolikäyttöön (mm. markerien asemoinnin regressiotesti)
     ;(window as unknown as { __map?: MlMap }).__map = map
@@ -289,11 +315,7 @@ export default function MapView() {
     if (!route || route.waypoints.length < 2) return EMPTY_FC
     let checks: { crossesLand: boolean }[] = route.waypoints.slice(1).map(() => ({ crossesLand: false }))
     if (st.waterCompute) {
-      if (waterForShoreRef.current !== st.waterCompute) {
-        shoreRef.current = buildShoreIndex(st.waterCompute)
-        waterForShoreRef.current = st.waterCompute
-      }
-      if (shoreRef.current) checks = checkLegs(st.waterCompute, shoreRef.current, route.waypoints)
+      checks = checkLegs(st.waterCompute, getShoreIndex(st.waterCompute), route.waypoints)
     }
     return {
       type: 'FeatureCollection',
@@ -332,6 +354,7 @@ export default function MapView() {
   const editingSpotId = useApp((s) => s.editingSpotId)
   const favoriteIds = useApp((s) => s.favoriteIds)
   const seedCoordOverrides = useApp((s) => s.seedCoordOverrides)
+  const computedMap = useApp((s) => s.computed)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
@@ -342,6 +365,9 @@ export default function MapView() {
       let marker = spotMarkers.current.get(spot.id)
       const draggable = spot.id === editingSpotId && !spot.seed
       const favorite = favoriteIds.includes(spot.id)
+      // Merkki rantaan snapattuun pisteeseen, ei esim. saaren keskelle
+      const snapped = computedMap[computedKey(spot)]?.snapped
+      const pos: [number, number] = snapped ? [snapped.lon, snapped.lat] : [spot.lon, spot.lat]
       if (!marker) {
         const el = spotMarkerEl(spot)
         el.className = markerClass(spot, spot.id === selectedSpotId, favorite, draggable)
@@ -350,15 +376,15 @@ export default function MapView() {
           useApp.getState().selectSpot(spot.id)
         })
         marker = new Marker({ element: el, anchor: 'center', draggable })
-          .setLngLat([spot.lon, spot.lat])
+          .setLngLat(pos)
           .addTo(map)
         marker.on('dragend', () => {
-          const pos = marker!.getLngLat()
-          useApp.getState().updateSpot(spot.id, { lat: pos.lat, lon: pos.lng, coordsApproximate: false })
+          const p = marker!.getLngLat()
+          useApp.getState().updateSpot(spot.id, { lat: p.lat, lon: p.lng, coordsApproximate: false })
         })
         spotMarkers.current.set(spot.id, marker)
       } else {
-        marker.setLngLat([spot.lon, spot.lat])
+        marker.setLngLat(pos)
         marker.setDraggable(draggable)
         const el = marker.getElement()
         el.className = markerClass(spot, spot.id === selectedSpotId, favorite, draggable)
@@ -374,7 +400,7 @@ export default function MapView() {
         spotMarkers.current.delete(id)
       }
     }
-  }, [userSpots, selectedSpotId, editingSpotId, favoriteIds, seedCoordOverrides])
+  }, [userSpots, selectedSpotId, editingSpotId, favoriteIds, seedCoordOverrides, computedMap])
 
   // Reittipisteet + kumulatiiviset aikapillerit (aktiivinen reitti)
   const mode = useApp((s) => s.mode)

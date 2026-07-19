@@ -14,8 +14,9 @@ const QUERY = `[out:json][timeout:300];
 rel["natural"="water"]["name"="Päijänne"](${PAIJANNE_BBOX});
 out geom;`
 
-/** Yksinkertaistustoleranssit asteina: ~5 m laskentaan, ~20 m piirtoon */
-const TOLERANCE_COMPUTE = 0.00005
+/** Yksinkertaistustoleranssit asteina: ~10 m laskentaan, ~20 m piirtoon.
+ *  Laskennan tarkkuus riittää 20 km fetch-säteille ja puolittaa datan koon. */
+const TOLERANCE_COMPUTE = 0.0001
 const TOLERANCE_RENDER = 0.0002
 
 export interface PaijanneWater {

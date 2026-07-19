@@ -5,6 +5,7 @@ export type FeatureTag =
   | 'sauna'
   | 'laituri'
   | 'ankkurointi'
+  | 'ravintola'
   | 'nuotiopaikka'
   | 'wc'
   | 'uimaranta'
@@ -15,6 +16,7 @@ export const FEATURE_TAGS: FeatureTag[] = [
   'sauna',
   'laituri',
   'ankkurointi',
+  'ravintola',
   'nuotiopaikka',
   'wc',
   'uimaranta',

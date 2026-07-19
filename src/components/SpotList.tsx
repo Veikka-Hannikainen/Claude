@@ -6,7 +6,15 @@ import { FeatureIcon } from './FeatureIcons'
 import { t } from '../i18n/fi'
 import type { ShelterClass, Spot, SpotComputed } from '../lib/types'
 
-type Filter = 'all' | 'favorites' | 'sauna' | 'laituri' | 'ankkurointi' | 'sheltered' | 'sunset'
+type Filter =
+  | 'all'
+  | 'favorites'
+  | 'sauna'
+  | 'laituri'
+  | 'ankkurointi'
+  | 'ravintola'
+  | 'sheltered'
+  | 'sunset'
 
 /** Karkea suojaisuus listaan: mediaanifetch + 8 m/s referenssituuli → luokka */
 function shelterClass(comp: SpotComputed | undefined): ShelterClass | null {
@@ -28,6 +36,7 @@ const FILTERS: [Filter, string][] = [
   ['sauna', t.features.sauna],
   ['laituri', t.features.laituri],
   ['ankkurointi', t.features.ankkurointi],
+  ['ravintola', t.features.ravintola],
   ['sheltered', t.spots.filterSheltered],
   ['sunset', t.spots.filterSunset],
 ]
@@ -43,7 +52,12 @@ export default function SpotList() {
   const rows = useMemo(() => {
     let list: Spot[] = spots
     if (filter === 'favorites') list = list.filter((s) => favoriteIds.includes(s.id))
-    if (filter === 'sauna' || filter === 'laituri' || filter === 'ankkurointi') {
+    if (
+      filter === 'sauna' ||
+      filter === 'laituri' ||
+      filter === 'ankkurointi' ||
+      filter === 'ravintola'
+    ) {
       list = list.filter((s) => s.features?.includes(filter))
     }
     if (filter === 'sheltered') {
@@ -82,6 +96,9 @@ export default function SpotList() {
           </button>
         ))}
       </div>
+      <p className="muted small" style={{ margin: '0 0 8px' }}>
+        {t.spots.addHint}
+      </p>
       <ul className="spot-list">
         {rows.map((s) => {
           const comp = computed[computedKey(s)]

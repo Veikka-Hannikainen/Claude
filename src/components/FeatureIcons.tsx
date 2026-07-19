@@ -26,6 +26,14 @@ const ICONS: Record<FeatureTag, JSX.Element> = {
       <path d="M5 14c0 4 3 6 7 6s7-2 7-6" />
     </>
   ),
+  ravintola: (
+    <>
+      <path d="M7 3v7M5 3v4.5a2 2 0 0 0 4 0V3" />
+      <path d="M7 12v9" />
+      <path d="M16 3c-1.7 0-3 2-3 5s1.3 4 3 4V3z" />
+      <path d="M16 12v9" />
+    </>
+  ),
   nuotiopaikka: (
     <>
       <path d="M12 4c1.8 2.6 4.5 4.4 4.5 8a4.5 4.5 0 0 1-9 0c0-2 1-3.4 2-4.6.3 1 .8 1.8 1.7 2.4C11 7.6 11.4 5.7 12 4z" />

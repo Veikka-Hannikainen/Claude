@@ -8,6 +8,7 @@ export const t = {
     sauna: 'Sauna',
     laituri: 'Laituri',
     ankkurointi: 'Ankkurointi',
+    ravintola: 'Ravintola',
     nuotiopaikka: 'Nuotiopaikka',
     wc: 'WC',
     uimaranta: 'Uimaranta',
@@ -21,7 +22,7 @@ export const t = {
   spots: {
     listTitle: 'Luonnonsatamat',
     addSpot: 'Lisää paikka',
-    addHint: 'Klikkaa kartalta paikan sijainti',
+    addHint: 'Lisää oma paikka painamalla karttaa pitkään',
     edit: 'Muokkaa',
     remove: 'Poista',
     copyToOwn: 'Kopioi omaksi',

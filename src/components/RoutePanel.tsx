@@ -1,7 +1,8 @@
 import { useMemo } from 'react'
 import { useApp } from '../state/store'
 import { routeMetrics, formatDuration } from '../lib/route/metrics'
-import { buildShoreIndex, checkLegs } from '../lib/geo/landCrossing'
+import { checkLegs } from '../lib/geo/landCrossing'
+import { getShoreIndex } from '../lib/geo/shoreCache'
 import { t } from '../i18n/fi'
 
 export default function RoutePanel() {
@@ -21,7 +22,7 @@ export default function RoutePanel() {
 
   const legChecks = useMemo(() => {
     if (!route || !waterCompute || route.waypoints.length < 2) return []
-    return checkLegs(waterCompute, buildShoreIndex(waterCompute), route.waypoints)
+    return checkLegs(waterCompute, getShoreIndex(waterCompute), route.waypoints)
   }, [route, waterCompute])
   const crossing = legChecks.some((c) => c.crossesLand)
 

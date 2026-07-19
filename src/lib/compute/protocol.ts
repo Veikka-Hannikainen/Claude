@@ -6,12 +6,15 @@ export interface ComputeSpotInput {
   lat: number
 }
 
-export interface ComputeRequest {
-  water: WaterPolygon
-  fairwayLines: FairwayLines | null
-  fairwayAreas: FairwayAreas | null
-  spots: ComputeSpotInput[]
-}
+/** Aineistot lähetetään workerille vain kerran (init) — spottierät viittaavat niihin */
+export type ComputeRequest =
+  | {
+      type: 'init'
+      water: WaterPolygon
+      fairwayLines: FairwayLines | null
+      fairwayAreas: FairwayAreas | null
+    }
+  | { type: 'compute'; spots: ComputeSpotInput[] }
 
 export type ComputeResponse =
   | { type: 'result'; spotId: string; computed: SpotComputed }

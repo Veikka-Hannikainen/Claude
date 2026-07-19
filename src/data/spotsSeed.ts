@@ -320,7 +320,7 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n suurin eteläinen alue (18,4 ha, Selkäsaari + Lehtisaari) Padasjoella. Sauna, laituri poijuineen Selkäsaaren lounaispuolella, uimalaituri, grillikatos ja käymälät. ',
     approach: 'Katso lähestymiskartta lähteestä.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#lehtisten-saaret'],
   },
   {
     id: 'seed-pvy-linnasaaren-selkasaaret',
@@ -334,7 +334,7 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n luodot (1,5 ha) Linnasaaren kaakkoispuolella eteläisellä Tehinselällä. Laituri, grillikatos, nuotiokehä, käymälä ja kalliokiinnityslenkit — laituri Selkäsaarella pisteen kaakkoispuolella. ',
     approach: 'Katso lähestymiskartta lähteestä.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#linnasaaren-selkasaaret'],
   },
   {
     id: 'seed-pvy-vahaniemi',
@@ -348,7 +348,7 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n ranta-alue Virmailanselällä heti Pulkkilanharjun pohjoispuolella (Vähäniementie 240, Karilanmaa). ~200 m matala hiekkaranta, esteetön grillikatos ja käymälät. ',
     approach: 'Katso lähestymiskartta lähteestä.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#sysman-vahaniemi'],
   },
   {
     id: 'seed-pvy-vaha-varaissaari',
@@ -377,7 +377,7 @@ export const SEED_SPOTS: Spot[] = [
     approach: 'Laituri ja kiinnityspoijut; hyvä tulla veneellä.',
     sourceLinks: [
       'https://visitjyvaskyla.fi/lipaskohde/kalasaaren-rantautumispaikka-paijanteen-virkistysalueyhdistys/',
-      'https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/',
+      'https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#kalasaari',
     ],
   },
   {
@@ -487,7 +487,7 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n 28,5 ha:n virkistysalue Muuratsalon eteläkärjessä. Laavu, nuotiopaikka ja laituri.',
     approach: 'Muuratsalon eteläkärki Ristinselän puolella.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/', 'https://www.nuotiopaikat.fi/listing/mikonniemen-laavu/'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#mikonniemi', 'https://www.nuotiopaikat.fi/listing/mikonniemen-laavu/'],
   },
   {
     id: 'seed-pvy-sarvisalon-luoto',
@@ -501,7 +501,7 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n luonnontilainen 1,5 ha:n luoto Sarvisalon koillispuolella Kuhmoisissa. Ei rakenteita — aito luonnonsatama.',
     approach: 'Luonnonranta; tähystä kivet.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/', 'http://venesatamat.fi/fi/satama/sarvisalon-luoto'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#sarvisalon-luoto', 'http://venesatamat.fi/fi/satama/sarvisalon-luoto'],
   },
   {
     id: 'seed-pvy-pirttisaari',
@@ -517,7 +517,7 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n saari Korpilahdella. Sauna, laituri poijuineen, grillikatos, kaksi puuvajaa ja käymälä.',
     approach: 'Katso lähestymiskartta lähteestä.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#pirttisaari'],
   },
   {
     id: 'seed-pvy-tervamaki',
@@ -546,7 +546,7 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n saari VESIJÄRVELLÄ Hollolassa — Päijänteeltä Vääksyn kanavan kautta. Laituri peräpoijuin, melontalaituri länsirannalla, grillikatos, käymälät ja luontopolku.',
     approach: 'Laituri peräpoijuineen; pienveneille matala laituri länsirannalla.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#hannyssaari'],
   },
   {
     id: 'seed-pvy-selkasaari',
@@ -560,7 +560,7 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n 3,2 ha:n saari VESIJÄRVEN Enonselällä Lahden edustalla — Päijänteeltä Vääksyn kanavan kautta. Laituri peräpoijuin, matala melontalaituri, grillikatos ja käymälät.',
     approach: 'Laituri peräpoijuineen.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#vesijarven-selkasaari'],
   },
   {
     id: 'seed-pvy-iso-pirttisaari',
@@ -576,6 +576,6 @@ export const SEED_SPOTS: Spot[] = [
     notes:
       'PVY:n saari RUOTSALAISELLA Heinolassa — Päijänteeltä Kalkkisten kanavan kautta. Laituri poijuineen, grillikatos, puuvaja ja käymälä. Melojille poukama puuvajan takana.',
     approach: 'Laituri poijuineen; katso lähestymiskartta lähteestä.',
-    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/'],
+    sourceLinks: ['https://paijanteenvirkistysalueyhdistys.fi/virkistysalueet/#iso-pirttisaari'],
   },
 ]

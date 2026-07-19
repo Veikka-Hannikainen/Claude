@@ -61,10 +61,13 @@ async function waitForWater(page: Page) {
   )
 }
 
-/** Karttaklikkaus näkyvälle vesialueelle (sheetin ja kontrollien ulkopuolelle) */
-async function clickMap(page: Page) {
+/** Pitkä painallus näkyvälle vesialueelle — lisää oman paikan */
+async function longPressMap(page: Page) {
   const vp = page.viewportSize()!
-  await page.getByTestId('map').click({ position: { x: Math.round(vp.width * 0.4), y: 230 } })
+  await page.mouse.move(Math.round(vp.width * 0.4), 230)
+  await page.mouse.down()
+  await page.waitForTimeout(750)
+  await page.mouse.up()
 }
 
 test('app loads, downloads data and lists curated spots in the sheet', async ({ page }) => {
@@ -175,10 +178,9 @@ test('sauna filter shows only spots with a sauna', async ({ page }) => {
   await expect(list.getByText('Kelvenne · Kirkkosalmi')).toHaveCount(0)
 })
 
-test('adding an own spot via FAB and map click persists across reload', async ({ page }) => {
+test('adding an own spot via long-press persists across reload', async ({ page }) => {
   await waitForWater(page)
-  await page.getByTestId('add-spot').click()
-  await clickMap(page)
+  await longPressMap(page)
   await expect(page.getByTestId('spot-form')).toBeVisible()
   await page.getByTestId('spot-name').fill('Testipoukama')
   // Palvelutagi mukaan

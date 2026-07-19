@@ -8,9 +8,10 @@ import SettingsDialog from './components/SettingsDialog'
 import DataBanner from './components/DataBanner'
 import { computedKey, seedSpotsWithOverrides, useApp } from './state/store'
 import { SEED_SPOTS } from './data/spotsSeed'
+import type { SpotComputed } from './lib/types'
 import { downloadMissing, loadFromDb } from './lib/data/bootstrap'
 import { refineSeedCoords } from './lib/data/refineSeeds'
-import { computeSpots } from './lib/compute/computeClient'
+import { computeSpots, computeSpotsPriority } from './lib/compute/computeClient'
 import { t } from './i18n/fi'
 
 async function bootstrap() {
@@ -51,13 +52,15 @@ export default function App() {
     })
   }, [])
 
-  // Laske suoja-analyysi spoteille, joilta tulos puuttuu (tai väylädata saapui myöhemmin)
+  // Laske suoja-analyysi spoteille, joilta tulos puuttuu (tai väylädata saapui myöhemmin).
+  // Valittu spotti menee pikakaistalle (oma worker), muut taustalle pieninä erinä.
   const waterCompute = useApp((s) => s.waterCompute)
   const fairwayLines = useApp((s) => s.fairwayLines)
   const fairwayAreas = useApp((s) => s.fairwayAreas)
   const userSpots = useApp((s) => s.userSpots)
   const computed = useApp((s) => s.computed)
   const seedCoordOverrides = useApp((s) => s.seedCoordOverrides)
+  const selectedSpotId = useApp((s) => s.selectedSpotId)
   useEffect(() => {
     if (!waterCompute) return
     const all = [...seedSpotsWithOverrides(seedCoordOverrides), ...userSpots]
@@ -69,20 +72,31 @@ export default function App() {
       return !c.withFairways && fairwayLines != null
     })
     if (needed.length === 0) return
-    needed.forEach((sp) => inflight.current.add(computedKey(sp)))
-    void computeSpots(
-      waterCompute,
-      fairwayLines,
-      fairwayAreas,
-      needed.map((sp) => ({ id: computedKey(sp), lon: sp.lon, lat: sp.lat })),
-      (key, result) => {
-        inflight.current.delete(key)
-        useApp.getState().setComputed(key, result)
-      },
-    ).then(() => {
-      needed.forEach((sp) => inflight.current.delete(computedKey(sp)))
-    })
-  }, [waterCompute, fairwayLines, fairwayAreas, userSpots, computed, seedCoordOverrides])
+
+    const onResult = (key: string, result: SpotComputed) => {
+      inflight.current.delete(key)
+      useApp.getState().setComputed(key, result)
+    }
+    const dispatch = (
+      lane: typeof computeSpots,
+      spots: typeof needed,
+    ) => {
+      spots.forEach((sp) => inflight.current.add(computedKey(sp)))
+      void lane(
+        waterCompute,
+        fairwayLines,
+        fairwayAreas,
+        spots.map((sp) => ({ id: computedKey(sp), lon: sp.lon, lat: sp.lat })),
+        onResult,
+      ).then(() => spots.forEach((sp) => inflight.current.delete(computedKey(sp))))
+    }
+
+    const selected = needed.filter((sp) => sp.id === selectedSpotId)
+    const rest = needed.filter((sp) => sp.id !== selectedSpotId)
+    if (selected.length > 0) dispatch(computeSpotsPriority, selected)
+    const CHUNK = 4
+    for (let i = 0; i < rest.length; i += CHUNK) dispatch(computeSpots, rest.slice(i, i + CHUNK))
+  }, [waterCompute, fairwayLines, fairwayAreas, userSpots, computed, seedCoordOverrides, selectedSpotId])
 
   return (
     <div className={`app sheet-${sheetPos}`}>
@@ -109,22 +123,6 @@ export default function App() {
       />
 
       <button
-        className={`fab${mode === 'add-spot' ? ' active' : ''}`}
-        aria-label={t.spots.addSpot}
-        data-testid="add-spot"
-        onClick={() => {
-          const st = useApp.getState()
-          if (st.mode === 'add-spot') {
-            st.setMode('browse')
-          } else {
-            st.setMode('add-spot')
-            st.setSheetPos('peek')
-          }
-        }}
-      >
-        {mode === 'add-spot' ? '×' : '+'}
-      </button>
-      <button
         className="chip satellite-btn"
         data-testid="satellite-toggle"
         onClick={() => {
@@ -135,11 +133,6 @@ export default function App() {
       >
         {satellite ? `🗺 ${t.map.map}` : `🛰 ${t.map.aerial}`}
       </button>
-      {mode === 'add-spot' && (
-        <div className="hint-pill" style={{ bottom: 'calc(50% - 20px)' }}>
-          {t.spots.addHint}
-        </div>
-      )}
       {mode === 'edit-route' && (
         <div className="hint-pill" style={{ top: 'calc(64px + env(safe-area-inset-top))' }}>
           {t.route.editHint}
