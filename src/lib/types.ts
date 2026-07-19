@@ -85,6 +85,8 @@ export interface Settings {
   mmlApiKey: string
   basemap: BasemapId
   showWaterOutline: boolean
+  /** Näytä "Väylä lähellä" -varoitus (< 500 m) — oletuksena pois */
+  warnNearFairway?: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -94,6 +96,7 @@ export const DEFAULT_SETTINGS: Settings = {
   mmlApiKey: '',
   basemap: 'kartta',
   showWaterOutline: false,
+  warnNearFairway: false,
 }
 
 export type ShelterClass = 'suojassa' | 'kohtalainen' | 'altis'

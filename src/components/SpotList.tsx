@@ -36,6 +36,7 @@ export default function SpotList() {
   const spots = useAllSpots()
   const computed = useApp((s) => s.computed)
   const favoriteIds = useApp((s) => s.favoriteIds)
+  const warnNearFairway = useApp((s) => s.settings.warnNearFairway ?? false)
   const [filter, setFilter] = useState<Filter>('all')
   const app = useApp.getState()
 
@@ -94,10 +95,10 @@ export default function SpotList() {
                 </span>
                 <span className="mid">
                   <span className="name">{s.name}</span>
-                  {(s.features?.length || comp?.nearFairway) && (
+                  {(s.features?.length || (warnNearFairway && comp?.nearFairway)) && (
                     <span className="feats">
                       {s.features?.slice(0, 5).map((f) => <FeatureIcon key={f} tag={f} />)}
-                      {comp?.nearFairway && (
+                      {warnNearFairway && comp?.nearFairway && (
                         <span className="badge bad small">{t.spots.nearFairway}</span>
                       )}
                     </span>

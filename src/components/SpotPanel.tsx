@@ -18,6 +18,7 @@ export default function SpotPanel() {
   const editingSpotId = useApp((s) => s.editingSpotId)
   const favoriteIds = useApp((s) => s.favoriteIds)
   const buildingChecks = useApp((s) => s.buildingChecks)
+  const warnNearFairway = useApp((s) => s.settings.warnNearFairway ?? false)
   const spot = findSpot(userSpots, selectedSpotId)
 
   const rawComp = spot ? computed[computedKey(spot)] : undefined
@@ -82,11 +83,13 @@ export default function SpotPanel() {
         <h1>{spot.name}</h1>
         <div className="badges">
           <span className="badge">{spot.isIsland ? t.spots.island : t.spots.mainland}</span>
-          {spot.official && <span className="badge ok">{t.spots.officialBadge}</span>}
+          {spot.official && <span className="badge info">{t.spots.officialBadge}</span>}
           {!spot.seed && <span className="badge">{t.spots.ownBadge}</span>}
           {spot.coordsApproximate && <span className="badge warn">{t.spots.approxBadge}</span>}
           {rawComp?.farFromWater && <span className="badge warn">{t.spots.farFromWater}</span>}
-          {comp?.nearFairway && <span className="badge bad">{t.spots.nearFairway}</span>}
+          {warnNearFairway && comp?.nearFairway && (
+            <span className="badge bad">{t.spots.nearFairway}</span>
+          )}
           {sunset?.openness && (
             <span className={`badge ${sunset.openness === 'kyllä' ? 'ok' : sunset.openness === 'osittain' ? 'warn' : ''}`}>
               {t.spots.sunset}: {t.spots.sunsetOpen[sunset.openness]}

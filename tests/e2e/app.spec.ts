@@ -134,13 +134,25 @@ test('satellite toggle switches basemap and back', async ({ page }) => {
   await page.waitForFunction(() => window.__appStore.getState().settings.basemap === 'kartta')
 })
 
-test('spot next to a fairway gets the nearFairway warning', async ({ page }) => {
+test('fairway proximity warning is opt-in via settings', async ({ page }) => {
   await waitForWater(page)
   await page.getByTestId('spot-list').getByText('Pulkkilanharju', { exact: false }).click()
   await expect(page.getByTestId('spot-panel')).toBeVisible()
-  await expect(page.locator('.badge', { hasText: 'Väylä lähellä' })).toBeVisible({
-    timeout: 20_000,
-  })
+  // Odota että laskenta toteaa väylän läheiseksi…
+  await page.waitForFunction(
+    () => {
+      const st = window.__appStore.getState()
+      const key = Object.keys(st.computed).find((k) => k.startsWith('seed-pulkkilanharju:'))
+      return key && st.computed[key].nearFairway === true
+    },
+    undefined,
+    { timeout: 20_000 },
+  )
+  // …mutta oletuksena varoitusta EI näytetä
+  await expect(page.locator('.badge', { hasText: 'Väylä lähellä' })).toHaveCount(0)
+  // Asetuksesta päälle → badge näkyy
+  await page.evaluate(() => window.__appStore.getState().setSettings({ warnNearFairway: true }))
+  await expect(page.locator('.badge', { hasText: 'Väylä lähellä' })).toBeVisible()
 })
 
 test('favorite toggle persists and favorites filter works', async ({ page }) => {

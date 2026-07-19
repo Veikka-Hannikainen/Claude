@@ -125,6 +125,7 @@ export const t = {
       esri: 'Satelliitti (Esri)',
     },
     showWaterOutline: 'Näytä rantaviiva',
+    warnNearFairway: 'Varoita väylän läheisyydestä (alle 500 m)',
     export: 'Vie omat tiedot (JSON)',
     import: 'Tuo omat tiedot (JSON)',
     close: 'Sulje',

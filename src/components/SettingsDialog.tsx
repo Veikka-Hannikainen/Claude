@@ -75,6 +75,15 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
           />
           {t.settings.showWaterOutline}
         </label>
+        <label className="row">
+          <input
+            type="checkbox"
+            data-testid="toggle-fairway-warn"
+            checked={settings.warnNearFairway ?? false}
+            onChange={(e) => app.setSettings({ warnNearFairway: e.target.checked })}
+          />
+          {t.settings.warnNearFairway}
+        </label>
 
         <div className="btn-row">
           <button

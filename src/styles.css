@@ -231,10 +231,11 @@ input[type='range'] { padding: 0; accent-color: var(--accent); background: none;
 }
 .spot-row .ico {
   flex: none; width: 38px; height: 38px; border-radius: 12px;
-  background: #eaf1fd; color: var(--accent-ink);
+  background: #e2f6e2; color: #0a7d32;
   display: flex; align-items: center; justify-content: center;
 }
-.spot-row .ico.official { background: #e2f6e2; color: #0a7d32; }
+.spot-row .ico.official { background: #eaf1fd; color: var(--accent-ink); }
+.badge.info { background: #eaf1fd; color: var(--accent-ink); }
 .spot-row .mid { flex: 1; min-width: 0; }
 .spot-row .name { font-weight: 600; font-size: 15px; display: block; }
 .spot-row .feats {
@@ -369,21 +370,26 @@ details.block > .block-body {
 /* HUOM: position PITÄÄ olla absolute — MapLibre asemoi markerin transformilla
    absoluuttisesti, ja relative rikkoisi asemoinnin (merkit "irtoavat" kartasta) */
 .spot-marker { width: 20px; height: 20px; position: absolute; cursor: pointer; }
+/* Luonnonsatamat vihreällä, viralliset kohteet sinisellä, omat violetilla */
 .spot-marker .dot {
   position: absolute; inset: 0; border-radius: 50%;
-  background: var(--accent); border: 3px solid #fff;
+  background: #0ca30c; border: 3px solid #fff;
   box-shadow: 0 2px 8px rgba(16, 24, 32, 0.35);
   transition: transform 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.spot-marker.own .dot { background: #7c5cff; }
-.spot-marker.official .dot { background: #0ca30c; }
-.spot-marker.official.selected .dot {
-  background: #076807;
-  box-shadow: 0 0 0 5px rgba(12, 163, 12, 0.25), 0 2px 8px rgba(16, 24, 32, 0.35);
-}
 .spot-marker.selected .dot {
-  transform: scale(1.35); background: #0d3ea8;
+  transform: scale(1.35); background: #076807;
+  box-shadow: 0 0 0 5px rgba(12, 163, 12, 0.28), 0 2px 8px rgba(16, 24, 32, 0.35);
+}
+.spot-marker.official .dot { background: var(--accent); }
+.spot-marker.official.selected .dot {
+  background: #0d3ea8;
   box-shadow: 0 0 0 5px rgba(47, 111, 237, 0.25), 0 2px 8px rgba(16, 24, 32, 0.35);
+}
+.spot-marker.own .dot { background: #7c5cff; }
+.spot-marker.own.selected .dot {
+  background: #5b3bd6;
+  box-shadow: 0 0 0 5px rgba(124, 92, 255, 0.28), 0 2px 8px rgba(16, 24, 32, 0.35);
 }
 .spot-marker .fav-dot {
   position: absolute; top: -7px; right: -7px; width: 13px; height: 13px;
