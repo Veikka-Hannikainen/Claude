@@ -35,7 +35,7 @@ export const ogcCollectionsFixture = {
   ],
 }
 
-/** Väylälinja kulkee Pulkkilanharjun seed-spotin (61.256, 25.52) vierestä */
+/** Väylälinja kulkee Pulkkilanharjun seed-spotin (61.28333, 25.53) vierestä */
 export const fairwayLinesFixture = {
   type: 'FeatureCollection',
   features: [
@@ -45,8 +45,8 @@ export const fairwayLinesFixture = {
       geometry: {
         type: 'LineString',
         coordinates: [
-          [25.52, 61.2],
-          [25.52, 61.3],
+          [25.53, 61.2],
+          [25.53, 61.32],
         ],
       },
     },
@@ -56,10 +56,10 @@ export const fairwayLinesFixture = {
 
 export const fairwayAreasFixture = { type: 'FeatureCollection', features: [], links: [] }
 
-/** OSM-nimitarkennuksen vastaus: Sudensaari löytyy "oikeasta" paikasta */
+/** OSM-nimitarkennuksen vastaus: Pirttisaari löytyy "oikeasta" paikasta */
 export const nameRefineFixture = {
   elements: [
-    { type: 'node', id: 900, lat: 62.0712, lon: 25.7005, tags: { name: 'Sudensaari' } },
+    { type: 'node', id: 900, lat: 62.0051, lon: 25.5449, tags: { name: 'Pirttisaari' } },
   ],
 }
 

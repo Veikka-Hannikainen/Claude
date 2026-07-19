@@ -114,15 +114,15 @@ test('natural harbor shows building check and Karttapaikka link, official spot d
 
 test('seed coordinates refine from OSM place names', async ({ page }) => {
   await page.waitForFunction(
-    () => !!window.__appStore?.getState().seedCoordOverrides?.['seed-sudensaari'],
+    () => !!window.__appStore?.getState().seedCoordOverrides?.['seed-pvy-pirttisaari'],
     undefined,
     { timeout: 15_000 },
   )
   const o = await page.evaluate(
-    () => window.__appStore.getState().seedCoordOverrides['seed-sudensaari'],
+    () => window.__appStore.getState().seedCoordOverrides['seed-pvy-pirttisaari'],
   )
-  expect(o.lat).toBeCloseTo(62.0712, 3)
-  expect(o.lon).toBeCloseTo(25.7005, 3)
+  expect(o.lat).toBeCloseTo(62.0051, 3)
+  expect(o.lon).toBeCloseTo(25.5449, 3)
 })
 
 test('satellite toggle switches basemap and back', async ({ page }) => {

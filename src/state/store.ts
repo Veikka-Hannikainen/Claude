@@ -208,10 +208,12 @@ export const useApp = create<AppState>()(
   ),
 )
 
-/** Seed-spotit OSM-nimitarkennukset huomioiden */
+/** Seed-spotit OSM-nimitarkennukset huomioiden. Override pätee vain jos
+ *  spotilla on yhä osmName — muuten seedin lähteistetty tarkka sijainti voittaa
+ *  (vanha selaimeen tallennettu tarkennus voisi muuten ylikirjoittaa sen). */
 export function seedSpotsWithOverrides(overrides: Record<string, CoordOverride>): Spot[] {
   return SEED_SPOTS.map((s) => {
-    const o = overrides[s.id]
+    const o = s.osmName ? overrides[s.id] : undefined
     if (!o) return s
     return { ...s, lat: o.lat, lon: o.lon, coordsApproximate: false }
   })
