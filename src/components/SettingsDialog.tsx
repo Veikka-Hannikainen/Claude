@@ -50,7 +50,6 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             value={settings.basemap}
             onChange={(e) => app.setSettings({ basemap: e.target.value as typeof settings.basemap })}
           >
-            <option value="merikartta">{t.settings.basemaps.merikartta}</option>
             <option value="kartta">{t.settings.basemaps.kartta}</option>
             <option value="osm">{t.settings.basemaps.osm}</option>
             <option value="mml">{t.settings.basemaps.mml}</option>
@@ -68,6 +67,15 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             <span className="muted small">{t.settings.mmlKeyHint}</span>
           </label>
         )}
+        <label className="row">
+          <input
+            type="checkbox"
+            data-testid="toggle-nautical"
+            checked={settings.showNauticalChart ?? true}
+            onChange={(e) => app.setSettings({ showNauticalChart: e.target.checked })}
+          />
+          {t.settings.showNauticalChart}
+        </label>
         <label className="row">
           <input
             type="checkbox"

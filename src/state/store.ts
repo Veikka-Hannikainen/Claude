@@ -193,12 +193,12 @@ export const useApp = create<AppState>()(
     }),
     {
       name: 'paijanne-v1',
-      version: 2,
+      version: 3,
       migrate: (persisted: unknown) => {
-        // v2: merikartta uudeksi oletuspohjaksi käyttäjille, jotka eivät ole
-        // itse vaihtaneet pohjaa (vanha oletus oli 'kartta')
+        // v3: merikartta-pohjakartta poistettu (tiilet eivät toimineet) —
+        // syvyydet tulevat läpinäkyvänä tasona Voyager-pohjan päälle
         const state = persisted as { settings?: { basemap?: string } } | undefined
-        if (state?.settings?.basemap === 'kartta') state.settings.basemap = 'merikartta'
+        if (state?.settings?.basemap === 'merikartta') state.settings.basemap = 'kartta'
         return state
       },
       partialize: (s) => ({

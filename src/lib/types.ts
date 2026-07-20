@@ -78,7 +78,7 @@ export interface Route {
   waypoints: Waypoint[]
 }
 
-export type BasemapId = 'merikartta' | 'kartta' | 'osm' | 'mml' | 'esri'
+export type BasemapId = 'kartta' | 'osm' | 'mml' | 'esri'
 
 export interface Settings {
   cruiseKn: number
@@ -89,6 +89,8 @@ export interface Settings {
   showWaterOutline: boolean
   /** Näytä "Väylä lähellä" -varoitus (< 500 m) — oletuksena pois */
   warnNearFairway?: boolean
+  /** Merikarttataso (Traficom, syvyydet) kartan päällä — oletuksena päällä */
+  showNauticalChart?: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -96,9 +98,10 @@ export const DEFAULT_SETTINGS: Settings = {
   fuelLph: 22,
   fuelPriceEur: 2.2,
   mmlApiKey: '',
-  basemap: 'merikartta',
+  basemap: 'kartta',
   showWaterOutline: false,
   warnNearFairway: false,
+  showNauticalChart: true,
 }
 
 export type ShelterClass = 'suojassa' | 'kohtalainen' | 'altis'

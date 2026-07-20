@@ -37,15 +37,6 @@ function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
       attribution: '© Esri, Maxar, Earthstar Geographics',
     }
     layerSource = 'esri'
-  } else if (settings.basemap === 'kartta') {
-    sources.kartta = {
-      type: 'raster',
-      tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
-      tileSize: 256,
-      maxzoom: 19,
-      attribution: '© OpenStreetMap © CARTO',
-    }
-    layerSource = 'kartta'
   } else if (settings.basemap === 'osm') {
     sources.osm = {
       type: 'raster',
@@ -56,27 +47,45 @@ function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
     }
     layerSource = 'osm'
   } else {
-    // Oletus: Traficomin avoin rasterimerikartta (sarja J = Päijänne) — syvyydet,
-    // väylät ja merkinnät. Ei navigointikäyttöön.
-    sources.merikartta = {
+    // Oletus: vaalea Voyager-karttapohja — toimii aina; merikartta piirretään
+    // erillisenä läpinäkyvänä tasona sen päälle (ks. addOverlays)
+    sources.kartta = {
+      type: 'raster',
+      tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
+      tileSize: 256,
+      maxzoom: 19,
+      attribution: '© OpenStreetMap © CARTO',
+    }
+    layerSource = 'kartta'
+  }
+  // Merikarttataso (Traficom S-57, läpinäkyvä WMS): syvyydet, väylät ja merkit.
+  // Jos tiilet eivät lataudu, pohjakartta näkyy silti — turvallinen vikatila.
+  const showChart = settings.showNauticalChart ?? true
+  const satelliteBase = settings.basemap === 'mml' || settings.basemap === 'esri'
+  if (showChart && !satelliteBase) {
+    sources.nautical = {
       type: 'raster',
       tiles: [
-        'https://julkinen.traficom.fi/rasteripalvelu/wmts?request=GetTile&version=1.0.0&service=wmts&layer=Traficom:Merikarttasarja%20J%20public&TILEMATRIXSET=WGS84_Pseudo-Mercator&TileMatrix=WGS84_Pseudo-Mercator:{z}&tilerow={y}&tilecol={x}&format=image/png&style=default',
+        'https://julkinen.traficom.fi/s57/wms?service=WMS&request=GetMap&version=1.3.0&layers=cells&styles=&format=image%2Fpng&transparent=true&crs=EPSG%3A3857&width=256&height=256&bbox={bbox-epsg-3857}',
       ],
       tileSize: 256,
-      maxzoom: 15,
       attribution: '© Traficom (CC BY 4.0) — ei navigointikäyttöön',
     }
-    layerSource = 'merikartta'
   }
-  return {
-    version: 8,
-    sources,
-    layers: [
-      { id: 'bg', type: 'background', paint: { 'background-color': '#eef1f4' } },
-      { id: 'basemap', type: 'raster', source: layerSource },
-    ],
+  const layers: maplibregl.LayerSpecification[] = [
+    { id: 'bg', type: 'background', paint: { 'background-color': '#eef1f4' } },
+    { id: 'basemap', type: 'raster', source: layerSource },
+  ]
+  if (sources.nautical) {
+    layers.push({
+      id: 'nautical-chart',
+      type: 'raster',
+      source: 'nautical',
+      minzoom: 9,
+      paint: { 'raster-opacity': 0.85 },
+    })
   }
+  return { version: 8, sources, layers }
 }
 
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
@@ -284,12 +293,13 @@ export default function MapView() {
   // Basemap-vaihto
   const basemap = useApp((s) => s.settings.basemap)
   const mmlKey = useApp((s) => s.settings.mmlApiKey)
+  const showNauticalChart = useApp((s) => s.settings.showNauticalChart ?? true)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
     map.setStyle(basemapStyle(useApp.getState().settings))
     // 'style.load'-käsittelijä lisää overlayt takaisin
-  }, [basemap, mmlKey])
+  }, [basemap, mmlKey, showNauticalChart])
 
   // Overlay-datan synkka
   const waterRender = useApp((s) => s.waterRender)
