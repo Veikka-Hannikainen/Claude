@@ -3,14 +3,13 @@ import 'maplibre-gl/dist/maplibre-gl.css'
 import { useEffect, useRef } from 'react'
 import type { FeatureCollection } from 'geojson'
 import { computedKey, seedSpotsWithOverrides, useApp } from '../state/store'
-import { checkLegs } from '../lib/geo/landCrossing'
-import { getShoreIndex } from '../lib/geo/shoreCache'
-import { routeMetrics } from '../lib/route/metrics'
 import type { Settings, Spot } from '../lib/types'
 
 const PAIJANNE_CENTER: [number, number] = [25.45, 61.6]
 /** Zoom-taso jolta alkaen paikkojen nimet näytetään */
 const LABEL_ZOOM = 10.5
+/** Pitkän painalluksen kesto — riittävän pitkä, ettei tule vahingossa */
+const LONG_PRESS_MS = 900
 
 function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
   const sources: Record<string, maplibregl.SourceSpecification> = {}
@@ -47,8 +46,6 @@ function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
     }
     layerSource = 'osm'
   } else {
-    // Oletus: vaalea Voyager-karttapohja — toimii aina; merikartta piirretään
-    // erillisenä läpinäkyvänä tasona sen päälle (ks. addOverlays)
     sources.kartta = {
       type: 'raster',
       tiles: ['https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}@2x.png'],
@@ -56,36 +53,15 @@ function basemapStyle(settings: Settings): maplibregl.StyleSpecification {
       maxzoom: 19,
       attribution: '© OpenStreetMap © CARTO',
     }
-    layerSource = 'kartta'
   }
-  // Merikarttataso (Traficom S-57, läpinäkyvä WMS): syvyydet, väylät ja merkit.
-  // Jos tiilet eivät lataudu, pohjakartta näkyy silti — turvallinen vikatila.
-  const showChart = settings.showNauticalChart ?? true
-  const satelliteBase = settings.basemap === 'mml' || settings.basemap === 'esri'
-  if (showChart && !satelliteBase) {
-    sources.nautical = {
-      type: 'raster',
-      tiles: [
-        'https://julkinen.traficom.fi/s57/wms?service=WMS&request=GetMap&version=1.3.0&layers=cells&styles=&format=image%2Fpng&transparent=true&crs=EPSG%3A3857&width=256&height=256&bbox={bbox-epsg-3857}',
-      ],
-      tileSize: 256,
-      attribution: '© Traficom (CC BY 4.0) — ei navigointikäyttöön',
-    }
+  return {
+    version: 8,
+    sources,
+    layers: [
+      { id: 'bg', type: 'background', paint: { 'background-color': '#eef1f4' } },
+      { id: 'basemap', type: 'raster', source: layerSource },
+    ],
   }
-  const layers: maplibregl.LayerSpecification[] = [
-    { id: 'bg', type: 'background', paint: { 'background-color': '#eef1f4' } },
-    { id: 'basemap', type: 'raster', source: layerSource },
-  ]
-  if (sources.nautical) {
-    layers.push({
-      id: 'nautical-chart',
-      type: 'raster',
-      source: 'nautical',
-      minzoom: 9,
-      paint: { 'raster-opacity': 0.85 },
-    })
-  }
-  return { version: 8, sources, layers }
 }
 
 const EMPTY_FC: FeatureCollection = { type: 'FeatureCollection', features: [] }
@@ -95,17 +71,10 @@ function addOverlays(map: MlMap) {
   const ensureSource = (id: string) => {
     if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY_FC })
   }
-  for (const id of [
-    'water-render',
-    'depth-contours',
-    'fairway-areas',
-    'fairway-lines',
-    'safety-devices',
-    'route-legs',
-  ])
+  for (const id of ['water-render', 'depth-contours', 'fairway-areas', 'fairway-lines', 'safety-devices'])
     ensureSource(id)
 
-  // Syvyyskäyrät hillittyinä sinisinä viivoina pohjimmaiseksi
+  // Syvyyskäyrät hillittyinä sinisinä viivoina (jos aineistoa on saatu)
   if (!map.getLayer('depth-contours-line')) {
     map.addLayer({
       id: 'depth-contours-line',
@@ -159,37 +128,6 @@ function addOverlays(map: MlMap) {
       },
     })
   }
-  // Reitti: valkoinen reunus + sininen viiva; maata leikkaava etappi punaisella
-  if (!map.getLayer('route-casing')) {
-    map.addLayer({
-      id: 'route-casing',
-      type: 'line',
-      source: 'route-legs',
-      filter: ['!', ['get', 'crossesLand']],
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#ffffff', 'line-width': 9, 'line-opacity': 0.9 },
-    })
-  }
-  if (!map.getLayer('route-line')) {
-    map.addLayer({
-      id: 'route-line',
-      type: 'line',
-      source: 'route-legs',
-      filter: ['!', ['get', 'crossesLand']],
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#2f6fed', 'line-width': 5 },
-    })
-  }
-  if (!map.getLayer('route-bad')) {
-    map.addLayer({
-      id: 'route-bad',
-      type: 'line',
-      source: 'route-legs',
-      filter: ['get', 'crossesLand'],
-      layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#d03b3b', 'line-width': 4, 'line-dasharray': [1.4, 1.6] },
-    })
-  }
 }
 
 function spotMarkerEl(spot: Spot): HTMLDivElement {
@@ -207,7 +145,6 @@ export default function MapView() {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<MlMap | null>(null)
   const spotMarkers = useRef(new Map<string, Marker>())
-  const wpMarkers = useRef<Marker[]>([])
   const suppressNextClick = useRef(false)
 
   // Init
@@ -230,39 +167,38 @@ export default function MapView() {
     map.on('zoom', () => {
       containerRef.current?.classList.toggle('show-labels', map.getZoom() >= LABEL_ZOOM)
     })
-    map.on('click', (e) => {
+    map.on('click', () => {
       if (suppressNextClick.current) {
         suppressNextClick.current = false
         return
       }
-      const { mode, activeRouteId } = useApp.getState()
-      if (mode === 'edit-route' && activeRouteId) {
-        const route = useApp.getState().routes.find((r) => r.id === activeRouteId)
-        if (route) {
-          useApp.getState().updateRoute(activeRouteId, {
-            waypoints: [...route.waypoints, { lat: e.lngLat.lat, lon: e.lngLat.lng }],
-          })
-        }
-      } else {
-        useApp.getState().selectSpot(null)
-      }
+      useApp.getState().selectSpot(null)
     })
 
-    // Pitkä painallus kartalla lisää oman paikan (iOS/Orca-tapa)
+    // Pitkä painallus kartalla lisää oman paikan. Peruuntuu heti jos sormi
+    // liikkuu, kartta liikkuu tai toinen sormi osuu näyttöön (pinch-zoom).
     const canvasEl = map.getCanvasContainer()
     let lpTimer: number | null = null
     let lpStart: { x: number; y: number } | null = null
+    let activePointers = 0
     const cancelLongPress = () => {
       if (lpTimer !== null) clearTimeout(lpTimer)
       lpTimer = null
       lpStart = null
     }
     canvasEl.addEventListener('pointerdown', (e: PointerEvent) => {
+      activePointers++
+      if (activePointers > 1) {
+        cancelLongPress()
+        return
+      }
       if (e.pointerType === 'mouse' && e.button !== 0) return
+      // Painallus olemassa olevan merkin päällä ei luo uutta paikkaa
+      if ((e.target as HTMLElement).closest?.('.spot-marker')) return
       lpStart = { x: e.clientX, y: e.clientY }
       lpTimer = window.setTimeout(() => {
         lpTimer = null
-        if (!lpStart) return
+        if (!lpStart || activePointers !== 1) return
         const rect = canvasEl.getBoundingClientRect()
         const lngLat = map.unproject([lpStart.x - rect.left, lpStart.y - rect.top])
         lpStart = null
@@ -272,15 +208,20 @@ export default function MapView() {
         st.addSpot({ id, name: 'Uusi paikka', lat: lngLat.lat, lon: lngLat.lng, isIsland: true })
         st.selectSpot(id)
         st.setEditingSpot(id)
-      }, 550)
+      }, LONG_PRESS_MS)
     })
     canvasEl.addEventListener('pointermove', (e: PointerEvent) => {
       if (lpStart && Math.hypot(e.clientX - lpStart.x, e.clientY - lpStart.y) > 10) cancelLongPress()
     })
-    canvasEl.addEventListener('pointerup', cancelLongPress)
-    canvasEl.addEventListener('pointercancel', cancelLongPress)
+    const onPointerEnd = () => {
+      activePointers = Math.max(0, activePointers - 1)
+      cancelLongPress()
+    }
+    canvasEl.addEventListener('pointerup', onPointerEnd)
+    canvasEl.addEventListener('pointercancel', onPointerEnd)
     map.on('move', cancelLongPress)
     map.on('zoom', cancelLongPress)
+
     mapRef.current = map
     // Testi-/konsolikäyttöön (mm. markerien asemoinnin regressiotesti)
     ;(window as unknown as { __map?: MlMap }).__map = map
@@ -293,21 +234,17 @@ export default function MapView() {
   // Basemap-vaihto
   const basemap = useApp((s) => s.settings.basemap)
   const mmlKey = useApp((s) => s.settings.mmlApiKey)
-  const showNauticalChart = useApp((s) => s.settings.showNauticalChart ?? true)
   useEffect(() => {
     const map = mapRef.current
     if (!map) return
     map.setStyle(basemapStyle(useApp.getState().settings))
     // 'style.load'-käsittelijä lisää overlayt takaisin
-  }, [basemap, mmlKey, showNauticalChart])
+  }, [basemap, mmlKey])
 
   // Overlay-datan synkka
   const waterRender = useApp((s) => s.waterRender)
   const fairwayLines = useApp((s) => s.fairwayLines)
   const fairwayAreas = useApp((s) => s.fairwayAreas)
-  const routes = useApp((s) => s.routes)
-  const activeRouteId = useApp((s) => s.activeRouteId)
-  const waterCompute = useApp((s) => s.waterCompute)
   const showWaterOutline = useApp((s) => s.settings.showWaterOutline)
   const safetyDevices = useApp((s) => s.safetyDevices)
   const depthContours = useApp((s) => s.depthContours)
@@ -323,7 +260,6 @@ export default function MapView() {
     setData('fairway-lines', st.fairwayLines)
     setData('fairway-areas', st.fairwayAreas)
     setData('safety-devices', st.safetyDevices)
-    setData('route-legs', routeLegsFc())
     if (map.getLayer('water-outline')) {
       map.setLayoutProperty(
         'water-outline',
@@ -333,36 +269,12 @@ export default function MapView() {
     }
   }
 
-  function routeLegsFc(): FeatureCollection {
-    const st = useApp.getState()
-    const route = st.routes.find((r) => r.id === st.activeRouteId)
-    if (!route || route.waypoints.length < 2) return EMPTY_FC
-    let checks: { crossesLand: boolean }[] = route.waypoints.slice(1).map(() => ({ crossesLand: false }))
-    if (st.waterCompute) {
-      checks = checkLegs(st.waterCompute, getShoreIndex(st.waterCompute), route.waypoints)
-    }
-    return {
-      type: 'FeatureCollection',
-      features: checks.map((c, i) => ({
-        type: 'Feature',
-        properties: { crossesLand: c.crossesLand, leg: i + 1 },
-        geometry: {
-          type: 'LineString',
-          coordinates: [
-            [route.waypoints[i].lon, route.waypoints[i].lat],
-            [route.waypoints[i + 1].lon, route.waypoints[i + 1].lat],
-          ],
-        },
-      })),
-    }
-  }
-
   useEffect(() => {
     const map = mapRef.current
     if (!map || !map.isStyleLoaded()) return
     syncOverlayData(map)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [waterRender, fairwayLines, fairwayAreas, safetyDevices, depthContours, routes, activeRouteId, waterCompute, showWaterOutline])
+  }, [waterRender, fairwayLines, fairwayAreas, safetyDevices, depthContours, showWaterOutline])
 
   // Kertaluonteinen lento kohteeseen (esim. "Näytä ilmakuvassa")
   const flyTarget = useApp((s) => s.flyTarget)
@@ -399,9 +311,7 @@ export default function MapView() {
           ev.stopPropagation()
           useApp.getState().selectSpot(spot.id)
         })
-        marker = new Marker({ element: el, anchor: 'center', draggable })
-          .setLngLat(pos)
-          .addTo(map)
+        marker = new Marker({ element: el, anchor: 'center', draggable }).setLngLat(pos).addTo(map)
         marker.on('dragend', () => {
           const p = marker!.getLngLat()
           useApp.getState().updateSpot(spot.id, { lat: p.lat, lon: p.lng, coordsApproximate: false })
@@ -426,64 +336,5 @@ export default function MapView() {
     }
   }, [userSpots, selectedSpotId, editingSpotId, favoriteIds, seedCoordOverrides, computedMap])
 
-  // Reittipisteet + kumulatiiviset aikapillerit (aktiivinen reitti)
-  const mode = useApp((s) => s.mode)
-  const cruiseKn = useApp((s) => s.settings.cruiseKn)
-  useEffect(() => {
-    const map = mapRef.current
-    if (!map) return
-    wpMarkers.current.forEach((m) => m.remove())
-    wpMarkers.current = []
-    const st = useApp.getState()
-    const route = st.routes.find((r) => r.id === st.activeRouteId)
-    if (!route) return
-
-    const metrics = routeMetrics(route.waypoints, st.settings.cruiseKn, st.settings.fuelLph, st.settings.fuelPriceEur)
-    const departure = Date.now()
-    let cumulativeNm = 0
-
-    route.waypoints.forEach((wp, i) => {
-      const el = document.createElement('div')
-      el.className = 'wp-marker'
-      const marker = new Marker({ element: el, draggable: mode === 'edit-route' })
-        .setLngLat([wp.lon, wp.lat])
-        .addTo(map)
-      marker.on('dragend', () => {
-        const pos = marker.getLngLat()
-        const r = useApp.getState().routes.find((x) => x.id === route.id)
-        if (!r) return
-        const waypoints = r.waypoints.map((w, j) => (j === i ? { lat: pos.lat, lon: pos.lng } : w))
-        useApp.getState().updateRoute(route.id, { waypoints })
-      })
-      if (mode === 'edit-route') {
-        el.addEventListener('click', (ev) => {
-          ev.stopPropagation()
-          const r = useApp.getState().routes.find((x) => x.id === route.id)
-          if (!r) return
-          useApp.getState().updateRoute(route.id, { waypoints: r.waypoints.filter((_, j) => j !== i) })
-        })
-      }
-      wpMarkers.current.push(marker)
-
-      // Aikapilleri: arvioitu kellonaika tälle pisteelle
-      if (i > 0 && st.settings.cruiseKn > 0 && metrics.legs[i - 1]) {
-        cumulativeNm += metrics.legs[i - 1].nm
-        const etaMs = departure + (cumulativeNm / st.settings.cruiseKn) * 3600_000
-        const pill = document.createElement('div')
-        pill.className = 'time-pill'
-        pill.textContent = new Date(etaMs).toLocaleTimeString('fi-FI', {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-        wpMarkers.current.push(
-          new Marker({ element: pill, anchor: 'bottom', offset: [0, -14] })
-            .setLngLat([wp.lon, wp.lat])
-            .addTo(map),
-        )
-      }
-    })
-  }, [routes, activeRouteId, mode, cruiseKn])
-
-  const modeClass = mode === 'browse' ? '' : ' crosshair'
-  return <div ref={containerRef} className={`map-container${modeClass}`} data-testid="map" />
+  return <div ref={containerRef} className="map-container" data-testid="map" />
 }

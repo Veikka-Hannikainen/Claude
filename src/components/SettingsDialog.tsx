@@ -70,15 +70,6 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
         <label className="row">
           <input
             type="checkbox"
-            data-testid="toggle-nautical"
-            checked={settings.showNauticalChart ?? true}
-            onChange={(e) => app.setSettings({ showNauticalChart: e.target.checked })}
-          />
-          {t.settings.showNauticalChart}
-        </label>
-        <label className="row">
-          <input
-            type="checkbox"
             checked={settings.showWaterOutline}
             onChange={(e) => app.setSettings({ showWaterOutline: e.target.checked })}
           />
@@ -99,7 +90,7 @@ export default function SettingsDialog({ onClose }: { onClose: () => void }) {
             onClick={() => {
               const st = useApp.getState()
               downloadJson(
-                buildExport(st.userSpots, st.routes, st.settings),
+                buildExport(st.userSpots, st.settings),
                 `paijanne-omat-${new Date().toISOString().slice(0, 10)}.json`,
               )
             }}

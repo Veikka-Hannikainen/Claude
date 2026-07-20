@@ -61,12 +61,21 @@ async function waitForWater(page: Page) {
   )
 }
 
-/** Pitkä painallus näkyvälle vesialueelle — lisää oman paikan */
+/** Pitkä painallus avovedelle — lisää oman paikan (LONG_PRESS_MS = 900) */
 async function longPressMap(page: Page) {
+  // Siirry avoveteen, jossa painalluksen alla ei ole markereita
+  await page.evaluate(() => (window as any).__map.jumpTo({ center: [25.35, 61.42], zoom: 12 }))
+  await page.waitForTimeout(250)
   const vp = page.viewportSize()!
-  await page.mouse.move(Math.round(vp.width * 0.4), 230)
+  await page.mouse.move(Math.round(vp.width / 2), Math.round(vp.height * 0.35))
   await page.mouse.down()
-  await page.waitForTimeout(750)
+  // Pidä pohjassa kunnes ajastin on oikeasti lauennut (kuormitettu CPU voi
+  // viivästyttää selaimen setTimeoutia yli kiinteän odotusajan)
+  await page.waitForFunction(
+    () => (window as any).__appStore.getState().userSpots.length > 0,
+    undefined,
+    { timeout: 10_000 },
+  )
   await page.mouse.up()
 }
 
@@ -194,62 +203,6 @@ test('adding an own spot via long-press persists across reload', async ({ page }
   await expect(page.getByTestId('spot-list').getByText('Testipoukama')).toBeVisible()
 })
 
-test('route across the island warns, route around it does not', async ({ page }) => {
-  await waitForWater(page)
-  // Reitti suoraan fixture-saaren yli
-  await page.evaluate(() => {
-    const app = window.__appStore.getState()
-    app.addRoute({
-      id: 'e2e-route',
-      name: 'Testireitti',
-      waypoints: [
-        { lat: 61.6, lon: 25.45 },
-        { lat: 61.6, lon: 25.55 },
-      ],
-    })
-    app.setView('route')
-  })
-  await expect(page.getByTestId('route-panel')).toBeVisible()
-  await expect(page.getByTestId('land-warning')).toBeVisible()
-  await expect(page.getByText('Etappi 1 leikkaa maata')).toBeVisible()
-  // Sama reitti saaren pohjoispuolelta — ei varoitusta
-  await page.evaluate(() => {
-    window.__appStore.getState().updateRoute('e2e-route', {
-      waypoints: [
-        { lat: 61.6, lon: 25.45 },
-        { lat: 61.65, lon: 25.5 },
-        { lat: 61.6, lon: 25.55 },
-      ],
-    })
-  })
-  await expect(page.getByTestId('land-warning')).toHaveCount(0)
-  const metrics = page.getByTestId('route-metrics')
-  await expect(metrics).toContainText('mpk')
-  await expect(metrics).toContainText('min')
-  await expect(metrics).toContainText('l (')
-})
-
-test('route metrics: ~10 nm at 20 kn ≈ 30 min and ~11 L', async ({ page }) => {
-  await waitForWater(page)
-  await page.evaluate(() => {
-    const app = window.__appStore.getState()
-    // 10 mpk pohjoiseen avovedessä
-    app.addRoute({
-      id: 'e2e-metrics',
-      name: 'Mittari',
-      waypoints: [
-        { lat: 61.1, lon: 25.2 },
-        { lat: 61.1 + 18.52 / 111.32, lon: 25.2 },
-      ],
-    })
-    app.setView('route')
-  })
-  const metrics = page.getByTestId('route-metrics')
-  await expect(metrics).toContainText('10.0 mpk')
-  await expect(metrics).toContainText('30 min')
-  await expect(metrics).toContainText('11 l')
-})
-
 test('5-day shelter: west wind → east-of-island sheltered, open west shore exposed', async ({
   page,
 }) => {
@@ -301,13 +254,12 @@ test('export and import round-trip preserves own spots', async ({ page }) => {
       version: 1,
       exportedAt: new Date().toISOString(),
       userSpots: st.userSpots,
-      routes: st.routes,
       settings: st.settings,
     })
   })
   // Tyhjennä ja tuo takaisin
   await page.evaluate(() => {
-    window.__appStore.setState({ userSpots: [], routes: [], selectedSpotId: null, view: 'list' })
+    window.__appStore.setState({ userSpots: [], selectedSpotId: null, view: 'list' })
   })
   await expect(page.getByTestId('spot-list').getByText('Vientipaikka')).toHaveCount(0)
   await page.evaluate((text) => {

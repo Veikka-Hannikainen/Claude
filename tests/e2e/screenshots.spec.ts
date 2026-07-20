@@ -54,21 +54,4 @@ test('screenshots', async ({ page }, testInfo) => {
   await page.getByTestId('analysis').locator('summary').click()
   await page.locator('.fetch-rose svg path').first().waitFor({ timeout: 20_000 })
   await page.screenshot({ path: `${DIR}/${p}-3-analyysi.png` })
-
-  await page.evaluate(() => {
-    const app = (window as any).__appStore.getState()
-    app.addRoute({
-      id: 'shot-route',
-      name: 'Kirkkosalmeen',
-      waypoints: [
-        { lat: 61.53, lon: 25.6 },
-        { lat: 61.6, lon: 25.55 },
-        { lat: 61.6, lon: 25.45 },
-      ],
-    })
-    app.setView('route')
-    app.setSheetPos('half')
-  })
-  await page.getByTestId('route-metrics').waitFor()
-  await page.screenshot({ path: `${DIR}/${p}-4-reitti.png` })
 })

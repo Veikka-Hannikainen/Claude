@@ -9,7 +9,6 @@ import {
   type DatasetState,
   type FairwayAreas,
   type FairwayLines,
-  type Route,
   type Settings,
   type Spot,
   type SpotComputed,
@@ -17,9 +16,8 @@ import {
   type WindForecast,
 } from '../lib/types'
 
-export type Mode = 'browse' | 'edit-route'
-/** Sheetin näkymä: lista → paikkakortti → reittieditori */
-export type View = 'list' | 'spot' | 'route'
+/** Sheetin näkymä: lista → paikkakortti */
+export type View = 'list' | 'spot'
 export type SheetPos = 'peek' | 'half' | 'full'
 
 /** Laskentatulos sidotaan koordinaattiin — spotin siirto mitätöi tuloksen */
@@ -56,7 +54,6 @@ interface AppState {
   // Käyttäjän data (persistoidaan localStorageen)
   userSpots: Spot[]
   computed: Record<string, SpotComputed>
-  routes: Route[]
   settings: Settings
   forecasts: Record<string, WindForecast>
   favoriteIds: string[]
@@ -72,17 +69,12 @@ interface AppState {
   updateSpot: (id: string, patch: Partial<Spot>) => void
   removeSpot: (id: string) => void
   setComputed: (key: string, value: SpotComputed) => void
-  addRoute: (route: Route) => void
-  updateRoute: (id: string, patch: Partial<Route>) => void
-  removeRoute: (id: string) => void
   setSettings: (patch: Partial<Settings>) => void
   setForecast: (spotId: string, f: WindForecast) => void
-  importUserData: (data: { userSpots?: Spot[]; routes?: Route[]; settings?: Partial<Settings> }) => void
+  importUserData: (data: { userSpots?: Spot[]; settings?: Partial<Settings> }) => void
 
   // UI-tila
   selectedSpotId: string | null
-  activeRouteId: string | null
-  mode: Mode
   view: View
   sheetPos: SheetPos
   editingSpotId: string | null
@@ -90,8 +82,6 @@ interface AppState {
   flyTarget: { lon: number; lat: number; zoom: number; ts: number } | null
   flyTo: (lon: number, lat: number, zoom?: number) => void
   selectSpot: (id: string | null) => void
-  setActiveRoute: (id: string | null) => void
-  setMode: (m: Mode) => void
   setView: (v: View) => void
   setSheetPos: (p: SheetPos) => void
   setEditingSpot: (id: string | null) => void
@@ -114,7 +104,6 @@ export const useApp = create<AppState>()(
 
       userSpots: [],
       computed: {},
-      routes: [],
       settings: DEFAULT_SETTINGS,
       forecasts: {},
       favoriteIds: [],
@@ -144,16 +133,6 @@ export const useApp = create<AppState>()(
           view: s.selectedSpotId === id ? 'list' : s.view,
         })),
       setComputed: (key, value) => set((s) => ({ computed: { ...s.computed, [key]: value } })),
-      addRoute: (route) => set((s) => ({ routes: [...s.routes, route], activeRouteId: route.id })),
-      updateRoute: (id, patch) =>
-        set((s) => ({ routes: s.routes.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
-      removeRoute: (id) =>
-        set((s) => ({
-          routes: s.routes.filter((r) => r.id !== id),
-          activeRouteId: s.activeRouteId === id ? null : s.activeRouteId,
-          mode: s.activeRouteId === id && s.mode === 'edit-route' ? 'browse' : s.mode,
-          view: s.activeRouteId === id && s.view === 'route' ? 'list' : s.view,
-        })),
       setSettings: (patch) => set((s) => ({ settings: { ...s.settings, ...patch } })),
       setForecast: (spotId, f) =>
         set((s) => {
@@ -165,13 +144,10 @@ export const useApp = create<AppState>()(
       importUserData: (data) =>
         set((s) => ({
           userSpots: data.userSpots ?? s.userSpots,
-          routes: data.routes ?? s.routes,
           settings: data.settings ? { ...s.settings, ...data.settings } : s.settings,
         })),
 
       selectedSpotId: null,
-      activeRouteId: null,
-      mode: 'browse',
       view: 'list',
       sheetPos: 'half',
       editingSpotId: null,
@@ -180,13 +156,11 @@ export const useApp = create<AppState>()(
       selectSpot: (selectedSpotId) =>
         set((s) => ({
           selectedSpotId,
-          view: selectedSpotId ? 'spot' : s.view === 'spot' ? 'list' : s.view,
+          view: selectedSpotId ? 'spot' : 'list',
           // Kartalta valittu paikka nostaa peek-sheetin näkyviin
           sheetPos: selectedSpotId && s.sheetPos === 'peek' ? 'half' : s.sheetPos,
           editingSpotId: null,
         })),
-      setActiveRoute: (activeRouteId) => set({ activeRouteId }),
-      setMode: (mode) => set({ mode }),
       setView: (view) => set({ view }),
       setSheetPos: (sheetPos) => set({ sheetPos }),
       setEditingSpot: (editingSpotId) => set({ editingSpotId }),
@@ -195,8 +169,7 @@ export const useApp = create<AppState>()(
       name: 'paijanne-v1',
       version: 3,
       migrate: (persisted: unknown) => {
-        // v3: merikartta-pohjakartta poistettu (tiilet eivät toimineet) —
-        // syvyydet tulevat läpinäkyvänä tasona Voyager-pohjan päälle
+        // v3: merikartta-pohjakartta poistettu (tiilet eivät toimineet)
         const state = persisted as { settings?: { basemap?: string } } | undefined
         if (state?.settings?.basemap === 'merikartta') state.settings.basemap = 'kartta'
         return state
@@ -204,21 +177,18 @@ export const useApp = create<AppState>()(
       partialize: (s) => ({
         userSpots: s.userSpots,
         computed: s.computed,
-        routes: s.routes,
         settings: s.settings,
         forecasts: s.forecasts,
         favoriteIds: s.favoriteIds,
         buildingChecks: s.buildingChecks,
         seedCoordOverrides: s.seedCoordOverrides,
-        activeRouteId: s.activeRouteId,
       }),
     },
   ),
 )
 
 /** Seed-spotit OSM-nimitarkennukset huomioiden. Override pätee vain jos
- *  spotilla on yhä osmName — muuten seedin lähteistetty tarkka sijainti voittaa
- *  (vanha selaimeen tallennettu tarkennus voisi muuten ylikirjoittaa sen). */
+ *  spotilla on yhä osmName — muuten seedin lähteistetty tarkka sijainti voittaa. */
 export function seedSpotsWithOverrides(overrides: Record<string, CoordOverride>): Spot[] {
   return SEED_SPOTS.map((s) => {
     const o = s.osmName ? overrides[s.id] : undefined

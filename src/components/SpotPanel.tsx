@@ -228,18 +228,6 @@ export default function SpotPanel() {
         </details>
       ) : null}
 
-      <button
-        className="cta"
-        onClick={() => {
-          const id = `route-${Date.now()}`
-          app.addRoute({ id, name: spot.name, waypoints: [{ lat: spot.lat, lon: spot.lon }] })
-          app.setMode('edit-route')
-          app.setView('route')
-          app.setSheetPos('peek')
-        }}
-      >
-        {t.route.toSpot}
-      </button>
       <div className="btn-row">
         {!spot.seed ? (
           <>

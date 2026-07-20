@@ -67,16 +67,6 @@ export interface SpotComputed {
   computedAt: number
 }
 
-export interface Waypoint {
-  lat: number
-  lon: number
-}
-
-export interface Route {
-  id: string
-  name: string
-  waypoints: Waypoint[]
-}
 
 export type BasemapId = 'kartta' | 'osm' | 'mml' | 'esri'
 
@@ -89,8 +79,6 @@ export interface Settings {
   showWaterOutline: boolean
   /** Näytä "Väylä lähellä" -varoitus (< 500 m) — oletuksena pois */
   warnNearFairway?: boolean
-  /** Merikarttataso (Traficom, syvyydet) kartan päällä — oletuksena päällä */
-  showNauticalChart?: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -101,7 +89,6 @@ export const DEFAULT_SETTINGS: Settings = {
   basemap: 'kartta',
   showWaterOutline: false,
   warnNearFairway: false,
-  showNauticalChart: true,
 }
 
 export type ShelterClass = 'suojassa' | 'kohtalainen' | 'altis'

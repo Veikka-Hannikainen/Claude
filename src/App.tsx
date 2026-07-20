@@ -3,7 +3,6 @@ import MapView from './components/MapView'
 import BottomSheet from './components/BottomSheet'
 import SpotList from './components/SpotList'
 import SpotPanel from './components/SpotPanel'
-import RoutePanel from './components/RoutePanel'
 import SettingsDialog from './components/SettingsDialog'
 import DataBanner from './components/DataBanner'
 import { computedKey, seedSpotsWithOverrides, useApp } from './state/store'
@@ -27,7 +26,6 @@ async function bootstrap() {
 
 export default function App() {
   const view = useApp((s) => s.view)
-  const mode = useApp((s) => s.mode)
   const sheetPos = useApp((s) => s.sheetPos)
   const basemap = useApp((s) => s.settings.basemap)
   const satellite = basemap === 'mml' || basemap === 'esri'
@@ -133,16 +131,10 @@ export default function App() {
       >
         {satellite ? `🗺 ${t.map.map}` : `🛰 ${t.map.aerial}`}
       </button>
-      {mode === 'edit-route' && (
-        <div className="hint-pill" style={{ top: 'calc(64px + env(safe-area-inset-top))' }}>
-          {t.route.editHint}
-        </div>
-      )}
 
       <BottomSheet>
         {view === 'list' && <SpotList />}
         {view === 'spot' && <SpotPanel />}
-        {view === 'route' && <RoutePanel />}
       </BottomSheet>
 
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
